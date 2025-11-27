@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FS小手机</title>
+
+    <!-- 这两行是 PWA 必备 -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icon-192.png">
+    
+    <!-- 下面这两行是 iPhone 专用的（可加可不加） -->
+    <link rel="apple-touch-icon" href="/icon192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="background: url('wallpaper.jpg') center/cover no-repeat fixed; min-height: 100vh;">
+    <div id="app-container">
+        <header class="app-header">
+            <h1>小真蛸</h1>
+            <p>在线</p>
+            <button id="clear-button" title="清空聊天记录">×</button>
+        </header>
+        <div id="chat-window">
+            <div id="chat-messages">
+                <!-- 聊天消息会在这里动态添加 -->
+            </div>
+            <div id="loading-indicator" class="hidden">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        <footer class="app-footer">
+            <input type="text" id="task-input" placeholder="输入你想要完成的大任务...">
+            <button id="send-button">发送</button>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
