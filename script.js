@@ -1,9 +1,12 @@
 // --- 配置区 ---
-const API_URL = 'https://geminipolling-gv1p.onrender.com/v1/chat/completions';
-const MODEL = "gemini-2.5-pro"; 
+const API_URL = 'https://api.siliconflow.cn/v1/chat/completions';
+const MODEL = "zai-org/GLM-4.6"; 
 
 const API_KEYS = [
-    'geminiyl',
+    'sk-zjrwnikmirbgzteakyyrqtlwmkglwpapqcgpmgjbyupxhwzd',  // 你现在的这个
+    'sk-sepmltdwpfvlnsojvawflghrznpqxzlrulkortjnyxxgtisb', 
+    'sk-fedqospwlixieizvwrqztqxvianftmkpcdtkpmsrbodoxvds',
+    'sk-tskbokglzxesqbqbmuevlocnahlpagnlhaonubfmjhuflnyk',
     // 想加多少加多少，随便复制粘贴
 ];
 
