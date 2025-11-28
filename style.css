@@ -252,13 +252,6 @@ body {
     min-height: 0;               /* 关键！允许 chat-window 里的 overflow-y 正常滚动 */
 }
 
-
-/* 3. 全屏-给最外层再加一层保险（推荐加上） */
-html, body {
-    height: 100%;
-    overscroll-behavior: none;      /* 防止下拉刷新白屏（尤其是 iOS） */
-}
-
 /* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
 .app-header {
     flex-shrink: 0;              /* 顶栏不被压缩 */
@@ -327,14 +320,6 @@ html, body {
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
-}
-
-html, body {
-    height: 100dvh;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    overscroll-behavior: none;
 }
 
 body {
@@ -627,12 +612,8 @@ body {
 }
 
 
-
-
 /* 3. 通讯录列表样式 */
 #view-contact-list {
-    height: 100vh;
-    width: 100vw;
     display: flex;
     flex-direction: column;
     background: transparent;    /* 背景是壁纸，所以透明 */
