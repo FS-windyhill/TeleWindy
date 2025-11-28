@@ -314,31 +314,6 @@ html, body {
     100% { content: ''; }
 }
 
-/* 刘海屏优化 */
-/* ==== 彻底干掉刺眼的白色刘海/状态栏背景 ==== */
-@supports (padding-top: env(safe-area-inset-top)) {
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: env(safe-area-inset-top);   /* 就是刘海/动态岛的高度 */
-        background: #000000;                /* 改成纯黑 */
-        /* 如果你想跟壁纸完全融为一体，也可以改成这样： */
-        /* background: url('wallpaper.jpg') center top / cover no-repeat; */
-        z-index: 9999;
-        pointer-events: none;               /* 不挡住下面的点击 */
-    }
-    
-    /* 同时把 header 顶上去，贴着刘海走，不留白边 */
-    .app-header {
-        padding-top: calc(0px + env(safe-area-inset-top));
-        /* 如果你觉得标题太靠近顶部，可以再加个 4~8px */
-        /* padding-top: calc(16px + env(safe-area-inset-top)); */
-    }
-}
-
 
 /* 好友列表 */
 
@@ -936,7 +911,7 @@ body {
 
 /* ============= 壁纸弹窗专属美化 ============= */
 #main-modal .modal h2 {
-    margin: 0 0 20px 0;
+    margin: 5px 0 10px 0;
     text-align: center;
     font-size: 20px;
     color: #333;
@@ -1002,19 +977,19 @@ body {
 
 /* 预览图 */
 #wallpaper-preview {
-    margin: 20px auto;
+    margin: 5px auto;
     text-align: center;
     padding: 8px;
     border-radius: 14px;
     background: rgba(0,0,0,0.05);
-    max-width: 100%;
+    max-width: 100%;    
 }
 
 #wallpaper-preview img {
     max-width: 100%;
-    max-height: 55vh;
+    max-height: 20vh;
     border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 8px rgba(0,0,0,0.2);
 }
 
 /* 按钮统一美化（你原项目肯定已经有，这里补全） */
@@ -1047,5 +1022,20 @@ body {
     transform: translateY(-1px);
 }
 
+/* 导入导出 */
+/* 隐藏原生的文件输入框，但保持可点击 */
+#file { display: none; }
+
+/* 可选：给上传壁纸的卡片加个小图标更好看 */
+
+.main-options .main-option[onclick]::before {
+    font-size: 18px;
+    margin-right: 8px;
+}
+.main-options label[for="file"] span::before,
+.main-options .main-option:has(input[type="file"]) span::before {
+    font-size: 18px;
+    margin-right: 8px;
+}
 
 

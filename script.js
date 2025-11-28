@@ -631,5 +631,69 @@ document.getElementById('main-confirm').addEventListener('click', () => {
 // 取消壁纸设置
 document.getElementById('main-cancel').addEventListener('click', closeMainModal);
 
+// 导入导出
+function exportData() {
+  const data = JSON.stringify(localStorage, null, 2);
+  const filename = `TeleWindy-Backup-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.json`;
+  // 结果：TeleWindy-Backup-2025-11-28T15-30-22Z.json → 改成 TeleWindy-Backup-2025-11-28T15-30-22.json
+  
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+}
+
+function importData(input) {
+  // 如果没选文件，直接返回（防止误触）
+  if (!input.files || input.files.length === 0) {
+    alert('请选择一个备份文件哦～');
+    return;
+  return;
+  }
+
+  const file = input.files[0];
+
+  // 关键：加一个确认弹窗
+  const confirmImport = confirm(
+    `⚠️  即将导入配置文件：${file.name}\n\n` +
+    `导入后会完全覆盖当前所有设置（包括壁纸、书签、待办等）\n\n` +
+    `确定要继续吗？`
+  );
+
+  if (!confirmImport) {
+    // 用户点取消，就清空输入框，防止重复触发
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      // 可选：再加一层保险，防止导入一堆乱七八糟的东西
+      if (typeof data !== 'object' || data === null) {
+        alert('文件格式不对哦，这不是一个有效的备份文件');
+        return;
+      }
+
+      // 开始覆盖 localStorage
+      Object.keys(data).forEach(key => {
+        localStorage.setItem(key, data[key]);
+      });
+
+      // 成功提示 + 刷新
+      alert('导入成功！页面即将刷新～');
+      location.reload();
+    } catch (err) {
+      alert('文件损坏或格式错误，导入失败了');
+      console.error(err);
+    }
+  };
+
+  reader.readAsText(file);
+}
 
 window.addEventListener('load', init);
