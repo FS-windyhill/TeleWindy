@@ -1,7 +1,14 @@
 // --- 配置区 ---
-const API_KEY = 'sk-zjrwnikmirbgzteakyyrqtlwmkglwpapqcgpmgjbyupxhwzd';
 const API_URL = 'https://api.siliconflow.cn/v1/chat/completions';
 const MODEL = "zai-org/GLM-4.6"; 
+
+const API_KEYS = [
+    'sk-zjrwnikmirbgzteakyyrqtlwmkglwpapqcgpmgjbyupxhwzd',  // 你现在的这个
+    'sk-sepmltdwpfvlnsojvawflghrznpqxzlrulkortjnyxxgtisb', 
+    'sk-fedqospwlixieizvwrqztqxvianftmkpcdtkpmsrbodoxvds',
+    'sk-tskbokglzxesqbqbmuevlocnahlpagnlhaonubfmjhuflnyk',
+    // 想加多少加多少，随便复制粘贴
+];
 
 // ★★★ 新增：全局系统提示词 (后台隐藏指令) ★★★
 const GLOBAL_SYSTEM_PROMPT = `
@@ -173,6 +180,26 @@ document.getElementById('back-btn').addEventListener('click', () => {
 // 3. 聊天核心逻辑 (★ 重点修改区域 ★)
 // ===========================
 
+// key轮询
+// 持久化当前使用的 key 索引（从0开始）
+function getCurrentKeyIndex() {
+    return parseInt(localStorage.getItem('current_api_key_index') || '0');
+}
+function saveCurrentKeyIndex(idx) {
+    localStorage.setItem('current_api_key_index', idx % API_KEYS.length);
+}
+
+// 获取当前要用的 key（每次发送消息时调用）
+function getNextKey() {
+    let idx = getCurrentKeyIndex();
+    const key = API_KEYS[idx];
+    // 用完就切换到下一个
+    saveCurrentKeyIndex(idx + 1);
+    console.log(`[轮询] 当前使用第 ${idx + 1}/${API_KEYS.length} 个 key`);
+    return key;
+}
+
+
 // 替换你原来的整个 addMessageToUI 函数
 function addMessageToUI(text, sender, avatarUrl) {
     const wrapper = document.createElement('div');
@@ -288,7 +315,8 @@ async function handleSend(isReroll = false) {
         console.log('👇👇👇 === 真实发送给AI的完整Prompt (Raw Data) === 👇👇👇');
         console.log(JSON.stringify(messagesToSend, null, 2)); 
         console.log('👆👆👆 ========================================== 👆👆👆');
-
+        
+        const API_KEY = getNextKey();
         const res = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
