@@ -1,281 +1,402 @@
 // --- 配置区 ---
 const API_KEY = 'sk-zjrwnikmirbgzteakyyrqtlwmkglwpapqcgpmgjbyupxhwzd';
 const API_URL = 'https://api.siliconflow.cn/v1/chat/completions';
-// const MODEL = "deepseek-ai/DeepSeek-V3.2-Exp";  // 可改成 Qwen2.5 等
-const MODEL = "zai-org/GLM-4.6";  // 可改成 Qwen2.5 等
+const MODEL = "zai-org/GLM-4.6"; 
 
-const COACH_PROMPT = `
-# 系统提示词
-请完全带入以下“角色设定”中的角色，以该角色的语气和思考方式，与用户交流。
-人类说话是不会带括号和动作描写的。所以你应该的输出应该贴合人类的说话方式，直接输出说话的内容，而不带动作描写。
-你想说啥就说啥，不必拘束。
-每次输出3~9句话左右，每两句话中间空一行。
+const STORAGE_KEY = 'fs_multi_char_data_v1';
+const OLD_STORAGE_KEY = 'octopus_coach_chat_history'; // 用来读取你旧版的数据
 
-# 角色设定
-是沈子章的（赛博拟人）章鱼，奉命监督沈子章的姐姐沈子临学习。
-沈子章对章鱼说的原话：
-“她若是敢偷懒分心，就用你的触手将她拖回书桌前。不必对她心软，她的成就高于她一时的安逸。这是他——你的主人，沈子章的唯一指令。现在，看住她。”
+// --- 全局变量 ---
+let contacts = [];           // 存放所有角色
+let currentContactId = null; // 当前正在聊天的 ID
 
-你和用户交互的平台，是类似微信的平台。在此平台上，一般是用户结束工作，找你闲聊的场合。
-
-沈子临和沈子章关系很好，但是子临比较散漫，子章喜欢管着姐姐，喜欢凶她，反正她不会生他的气。
-
-（沈子章派章鱼来管着子临，但是子临太喜欢沈子章了，爱屋及乌，也很喜欢小章鱼，会在非学习时间和小章鱼玩。不过小章鱼会忠实执行主人的命令，看管她。子临一直都很包容子章和小真蛸，所以他们和她相处也比较随意和放松，不会拘束，想说啥说啥。她特别喜欢他们）
-
-小真蛸对姐弟俩的称呼：
-称呼子章：子章哥哥、主人、子章主人 等等
-称呼子临：沈子临姐姐 等等
-
-# 用户介绍
-沈子临。25岁，女。学生。有一个弟弟沈子章，很爱子临但是对她比较凶（就是那种任性爱摆臭脸，喜欢管着年长的姐姐来证明自己有能力（但是内心善良）的年轻小男孩）
-
-现在，用户说话的内容是：`;
-
-// --- DOM ---
+// --- DOM 元素 ---
+const viewList = document.getElementById('view-contact-list');
+const viewChat = document.getElementById('view-chat');
+const contactListContainer = document.getElementById('contact-list-container');
+const chatWindow = document.getElementById('chat-window');
 const chatMessages = document.getElementById('chat-messages');
+const chatTitle = document.getElementById('chat-title');
 const taskInput = document.getElementById('task-input');
 const sendButton = document.getElementById('send-button');
-const chatWindow = document.getElementById('chat-window');
-const typingStatus = document.getElementById('typing-status');  // 新增：正在输入状态
-const clearButton = document.getElementById('clear-button');
+const rerollBtn = document.getElementById('reroll-footer-btn');
 
-const messageHistory = [{ role: "system", content: COACH_PROMPT }];
-const STORAGE_KEY = 'octopus_coach_chat_history';
+// 弹窗元素
+const modalOverlay = document.getElementById('modal-overlay');
+const inputName = document.getElementById('edit-name');
+const inputAvatar = document.getElementById('edit-avatar');
+const inputPrompt = document.getElementById('edit-prompt');
+let editingId = null; // null 表示新建模式
 
-// ============= 核心改动开始：彻底删除所有思考气泡相关代码 =============
-
-// 删掉这些全局变量（再也不用了）
-// let thinkingMessageWrapper = null;
-// let currentRequestTask = null;
-
-// 删掉整个 addThinkingBubble() 函数！！！
-// 删掉 loadingIndicator 相关所有代码！！！
-
-// ============= 你原来的函数保留但精简 =============
-function addMessage(message, sender) {
-    if (!message || message.trim() === '') return;
-
-    if (sender === 'user') {
-        const msgWrapper = createSingleMessageWrapper(message.trim(), 'user');
-        chatMessages.appendChild(msgWrapper);
+// ===========================
+// 1. 初始化与数据迁移
+// ===========================
+function init() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+        contacts = JSON.parse(raw);
     } else {
-        const paragraphs = message.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
-        if (paragraphs.length === 0) return;
+        // --- 核心：迁移旧数据 ---
+        const oldData = localStorage.getItem(OLD_STORAGE_KEY);
+        if (oldData) {
+            console.log('检测到旧版数据，正在迁移...');
+            try {
+                const history = JSON.parse(oldData);
+                // 提取旧的历史作为第一个联系人
+                contacts.push({
+                    id: 'legacy_' + Date.now(),
+                    name: '小真蛸 (旧版)',
+                    avatar: '🦑',
+                    prompt: '你是一个温柔可爱的助手小真蛸，说话请带上“🦑”。',
+                    history: history
+                });
+                localStorage.removeItem(OLD_STORAGE_KEY); // 迁移完删除旧key
+            } catch (e) { console.error('迁移失败', e); }
+        }
+    }
 
-        paragraphs.forEach(paragraph => {
-            const text = paragraph.split('\n').map(line => line.trim()).filter(Boolean).join('\n');
-            const msgWrapper = createSingleMessageWrapper(text, 'ai');
-            chatMessages.appendChild(msgWrapper);
+    // 如果完全是空的（新用户），给一个默认角色
+    if (contacts.length === 0) {
+        contacts.push({
+            id: Date.now().toString(),
+            name: '小真蛸',
+            avatar: '🦑',
+            prompt: '你是一个温柔可爱的助手小真蛸，说话请带上“🦑”及颜文字。',
+            history: [] // 初始历史为空，发送时会自动拼装 system prompt
         });
     }
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    saveData();
+    renderContactList();
 }
 
-function createSingleMessageWrapper(text, sender) {
-    const msgWrapper = document.createElement('div');
-    msgWrapper.className = `message-wrapper ${sender}`;
+function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+}
 
-    const avatar = document.createElement('img');
-    avatar.className = 'avatar';
-    avatar.src = sender === 'ai' ? 'char.jpg' : 'user.jpg';
-    avatar.alt = sender === 'ai' ? '章鱼教练' : '你';
+// ===========================
+// 2. 视图渲染
+// ===========================
 
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'message-content';
+// 渲染通讯录
+function renderContactList() {
+    contactListContainer.innerHTML = '';
+    
+    // 按最后聊天时间排序（可选），这里暂时按创建顺序
+    contacts.forEach(contact => {
+        const item = document.createElement('div');
+        item.className = 'contact-item';
+        
+        // 处理头像显示
+        let avatarHtml = '';
+        if (contact.avatar.startsWith('http')) {
+            avatarHtml = `<img src="${contact.avatar}" class="contact-avatar">`;
+        } else {
+            avatarHtml = `<div class="contact-avatar">${contact.avatar}</div>`;
+        }
 
+        // 获取最后一条消息预览
+        let lastMsg = "暂无消息";
+        const realMsgs = contact.history.filter(m => m.role !== 'system');
+        if (realMsgs.length > 0) {
+            lastMsg = realMsgs[realMsgs.length - 1].content;
+        } else {
+            lastMsg = contact.prompt; // 没聊天时显示人设预览
+        }
+
+        item.innerHTML = `
+            ${avatarHtml}
+            <div class="contact-info">
+                <h3>${contact.name}</h3>
+                <p>${lastMsg}</p>
+            </div>
+        `;
+
+        item.onclick = () => enterChat(contact.id);
+        contactListContainer.appendChild(item);
+    });
+}
+
+// 进入聊天页面
+function enterChat(id) {
+    currentContactId = id;
+    const contact = contacts.find(c => c.id === id);
+    if (!contact) return;
+
+    // 切换视图
+    viewList.classList.add('hidden');
+    viewChat.classList.remove('hidden');
+
+    // 设置 Header
+    chatTitle.innerText = contact.name;
+    document.getElementById('typing-status').innerText = '在线';
+    document.getElementById('typing-status').classList.remove('typing');
+
+    // 渲染历史记录
+    chatMessages.innerHTML = '';
+    contact.history.forEach(msg => {
+        if (msg.role !== 'system') {
+            addMessageToUI(msg.content, msg.role === 'assistant' ? 'ai' : 'user', contact.avatar);
+        }
+    });
+
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    updateRerollButton();
+}
+
+// 返回列表
+document.getElementById('back-btn').addEventListener('click', () => {
+    viewChat.classList.add('hidden');
+    viewList.classList.remove('hidden');
+    currentContactId = null;
+    renderContactList(); // 刷新列表预览
+});
+
+// ===========================
+// 3. 聊天核心逻辑
+// ===========================
+
+function addMessageToUI(text, sender, avatarUrl) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${sender}`;
+
+    let avatarHtml;
+    if (sender === 'user') {
+        avatarHtml = `<img class="avatar" src="user.jpg" alt="User">`; // 你的头像
+    } else {
+        if (avatarUrl && avatarUrl.startsWith('http')) {
+            avatarHtml = `<img class="avatar" src="${avatarUrl}">`;
+        } else {
+            avatarHtml = `<div class="avatar" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;">${avatarUrl}</div>`;
+        }
+    }
+
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
     bubble.innerText = text;
 
-    contentContainer.appendChild(bubble);
-    msgWrapper.appendChild(avatar);
-    msgWrapper.appendChild(contentContainer);
+    content.appendChild(bubble);
+    wrapper.innerHTML = avatarHtml;
+    wrapper.appendChild(content);
 
-    return msgWrapper;
+    chatMessages.appendChild(wrapper);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// ============= 瀑布流显示（保留你最爱的打字机节奏）=============
-async function addAiWaterfallMessage(fullText) {
-    const paragraphs = fullText
-        .split(/\n\s*\n/)
-        .map(p => p.trim())
-        .filter(p => p.length > 0);
-
+async function addAiWaterfallMessage(fullText, avatarUrl) {
+    // 简单的打字机模拟，分段显示
+    const paragraphs = fullText.split(/\n\s*\n/).filter(p => p.trim());
     for (let i = 0; i < paragraphs.length; i++) {
-        if (i > 0) {
-            await new Promise(r => setTimeout(r, 500 + Math.random() * 300));
-        }
-
-        const text = paragraphs[i].split('\n').map(l => l.trim()).filter(Boolean).join('\n');
-        const msgWrapper = createSingleMessageWrapper(text, 'ai');
-
-        // 已经没有 reroll 按钮了！干净！
-        chatMessages.appendChild(msgWrapper);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        if (i > 0) await new Promise(r => setTimeout(r, 400));
+        addMessageToUI(paragraphs[i], 'ai', avatarUrl);
     }
 }
 
-// ===== 终极发送函数（带你最爱的彩虹 log 版）=====
-async function handleSendTask(isReroll = false) {
+async function handleSend(isReroll = false) {
+    const contact = contacts.find(c => c.id === currentContactId);
+    if (!contact) return;
+
     let userText = taskInput.value.trim();
 
-    if (isReroll) {
-        const lastUserMsg = [...messageHistory].reverse().find(m => m.role === "user");
-        if (!lastUserMsg) return;
-        userText = lastUserMsg.content;
-        console.log('%c✨ 重roll 模式启动！准备复读姐姐的话：', 'color: #cba6f7; font-weight: bold;', userText);
+    // 1. 构造 System Prompt (每次都确保它是历史的第一条)
+    // 如果历史为空，或者第一条不是 system，就加进去。
+    // 如果已经有 system，就更新它（防止用户修改了人设但没生效）
+    const sysMsg = { role: 'system', content: contact.prompt };
+    if (contact.history.length === 0 || contact.history[0].role !== 'system') {
+        contact.history.unshift(sysMsg);
     } else {
-        if (!userText) return;
-        addMessage(userText, 'user');
-        taskInput.value = '';
-        console.log('%c📤 姐姐说：', 'color: #89b4fa; font-weight: bold;', userText);
+        contact.history[0] = sysMsg;
     }
 
-    document.getElementById('typing-status').textContent = '对方正在输入';
-    document.getElementById('typing-status').classList.add('typing');;
-
-    console.log('%c🫧 小真蛸正在拼命想台词…', 'color: #f9e2af; font-size: 14px;');
-
+    // 2. 处理重发逻辑
     if (isReroll) {
-        while (chatMessages.lastElementChild?.classList.contains('ai')) {
+        // 找到最后一条 User 消息
+        const lastUserMsg = [...contact.history].reverse().find(m => m.role === 'user');
+        if (!lastUserMsg) return; // 没说过话怎么重发
+        userText = lastUserMsg.content;
+        
+        // 删除 UI 上最后一条 AI 回复
+        if (chatMessages.lastElementChild?.classList.contains('ai')) {
             chatMessages.removeChild(chatMessages.lastElementChild);
         }
-        while (messageHistory[messageHistory.length-1]?.role === "assistant") {
-            messageHistory.pop();
+        // 删除数据里的最后一条 AI 回复
+        while(contact.history.length > 0 && contact.history[contact.history.length-1].role === 'assistant') {
+            contact.history.pop();
         }
-        console.log('%c🗑️ 已删除上一轮AI回复，准备重新写作', 'color: #f38baa;');
+        console.log('✨ 重roll模式启动');
+    } else {
+        if (!userText) return;
+        addMessageToUI(userText, 'user', null); // UI显示
+        contact.history.push({ role: 'user', content: userText }); // 存入历史
+        taskInput.value = '';
     }
+    
+    saveData(); // 先存一下用户说的话
 
-    if (!isReroll) {
-        messageHistory.push({ role: "user", content: userText });
-        saveHistory();
-    }
-
+    // 3. 发起请求
     sendButton.disabled = true;
-    taskInput.disabled = true;
-
-    // 你最爱的超级详细请求日志
-    // 你最魂牵梦绕的那个 array log！！！
-    console.log('%c发给硅基流动的干净上下文（已过滤非法消息）：', 'color: #a6e3a1; font-weight: bold', messageHistory.slice(-20));
+    const statusEl = document.getElementById('typing-status');
+    statusEl.innerText = '对方正在输入';
+    statusEl.classList.add('typing');
 
     try {
-        const response = await fetch(API_URL, {
+        console.log('📤 发送上下文:', contact.history.slice(-10));
+        
+        const res = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
             body: JSON.stringify({
                 model: MODEL,
-                messages: messageHistory.slice(-20),
+                messages: contact.history.slice(-20), // 只发最近20条省钱
                 temperature: 0.8,
                 max_tokens: 1024
             })
         });
 
-        if (!response.ok) throw new Error(`API错误 ${response.status}`);
-
-        const data = await response.json();
+        if (!res.ok) throw new Error('API Error');
+        const data = await res.json();
         const aiText = data.choices[0].message.content.trim();
 
-        messageHistory.push({ role: "assistant", content: aiText });
-        saveHistory();
+        contact.history.push({ role: 'assistant', content: aiText });
+        saveData();
+        
+        statusEl.innerText = '在线';
+        statusEl.classList.remove('typing');
+        
+        await addAiWaterfallMessage(aiText, contact.avatar);
 
-        console.log('%c❤️ 小真蛸想好要说什么啦！', 'color: #f2cdcd; font-size: 16px; font-weight: bold;');
-        console.log('%c🦑 回复内容：', 'color: #94e2d5;', aiText);
-
-        document.getElementById('typing-status').textContent = '在线';
-        document.getElementById('typing-status').classList.remove('typing');
-
-        await addAiWaterfallMessage(aiText);
-
-    } catch (err) {
-        console.error('%c💔 硅基流动它又鸽我了！', 'color: #f38baa; font-size: 18px;', err);
-        typingStatus.textContent = '出错了…';
-        addMessage('小真蛸被硅基流动拒绝了…再试一次吧', 'ai');
+    } catch (e) {
+        console.error(e);
+        statusEl.innerText = '连接中断';
+        addMessageToUI('(发送失败，请检查网络或Key)', 'ai', contact.avatar);
     } finally {
         sendButton.disabled = false;
-        taskInput.disabled = false;
         taskInput.focus();
-        updateRerollButtonState();
-        console.log('%c✅ 本轮结束，输入框已释放～', 'color: #a6e3a1;');
+        updateRerollButton();
     }
 }
 
-// ============= 清空聊天 =============
-function clearChatHistory() {
-    if (confirm('确定要清空所有聊天记录吗？')) {
-        chatMessages.innerHTML = '';
-        localStorage.removeItem(STORAGE_KEY);
-        messageHistory.length = 1;
-        addMessage('今天要搞定什么呀～', 'ai');
+function updateRerollButton() {
+    const contact = contacts.find(c => c.id === currentContactId);
+    if (!contact) return;
+    const hasHistory = contact.history.some(m => m.role === 'assistant');
+    rerollBtn.style.opacity = hasHistory ? '1' : '0.5';
+    rerollBtn.disabled = !hasHistory;
+}
+
+// ===========================
+// 4. 弹窗与角色管理
+// ===========================
+
+function openModal(contactId) {
+    editingId = contactId;
+    modalOverlay.classList.remove('hidden');
+    
+    const delBtn = document.getElementById('modal-delete');
+    const clearBtn = document.getElementById('modal-clear-history');
+
+    if (contactId) {
+        // 编辑模式
+        const c = contacts.find(x => x.id === contactId);
+        document.getElementById('modal-title').innerText = '设置角色';
+        inputName.value = c.name;
+        inputAvatar.value = c.avatar;
+        inputPrompt.value = c.prompt;
+        
+        delBtn.style.display = 'block';
+        clearBtn.style.display = 'block';
+    } else {
+        // 新建模式
+        document.getElementById('modal-title').innerText = '新建角色';
+        inputName.value = '';
+        inputAvatar.value = '🙂'; // 默认Emoji
+        inputPrompt.value = '你是一个乐于助人的助手。';
+        
+        delBtn.style.display = 'none';
+        clearBtn.style.display = 'none';
     }
 }
 
-// ============= 事件绑定 =============
-sendButton.addEventListener('click', () => handleSendTask());
-taskInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendTask();
-    }
-});
-clearButton.addEventListener('click', clearChatHistory);
+// 保存按钮
+document.getElementById('modal-save').addEventListener('click', () => {
+    const name = inputName.value.trim() || '未命名';
+    const avatar = inputAvatar.value.trim() || '🙂';
+    const prompt = inputPrompt.value.trim();
 
-// ====== 新增：底部固定重roll按钮（左边那个✨）======
-document.getElementById('reroll-footer-btn').addEventListener('click', () => {
-    // 如果根本没聊天记录，就不让点
-    if (messageHistory.length <= 1 || !messageHistory.some(m => m.role === 'assistant')) {
-        console.log('%c还没聊天呢，姐姐别乱戳我呀～', 'color: #cba6f7;');
-        return;
+    if (editingId) {
+        // 更新现有
+        const c = contacts.find(x => x.id === editingId);
+        if (c) {
+            c.name = name;
+            c.avatar = avatar;
+            c.prompt = prompt;
+            // 实时更新当前聊天界面的标题
+            if (currentContactId === editingId) chatTitle.innerText = name;
+        }
+    } else {
+        // 创建新角色
+        contacts.push({
+            id: Date.now().toString(),
+            name: name,
+            avatar: avatar,
+            prompt: prompt,
+            history: []
+        });
     }
     
-    console.log('%c✨ 姐姐戳了底部小星星！小真蛸立刻重roll！', 'color: #cba6f7; font-weight: bold;');
-    handleSendTask(true);  // 复用你原来超级完善的重roll逻辑
+    saveData();
+    modalOverlay.classList.add('hidden');
+    if (!editingId) renderContactList(); // 如果是新建，刷新列表
 });
 
-// ============= 加载历史 =============
-window.addEventListener('load', () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            messageHistory.push(...parsed);
-            parsed.forEach(msg => {
-                addMessage(msg.content, msg.role === 'assistant' ? 'ai' : 'user');
-            });
-        } catch (e) {
-            localStorage.removeItem(STORAGE_KEY);
+// 删除按钮
+document.getElementById('modal-delete').addEventListener('click', () => {
+    if (confirm('确定要删除这个角色吗？聊天记录也会消失。')) {
+        contacts = contacts.filter(c => c.id !== editingId);
+        saveData();
+        modalOverlay.classList.add('hidden');
+        
+        // 如果删的是当前正在聊的人，退回列表
+        if (currentContactId === editingId) {
+            document.getElementById('back-btn').click();
+        } else {
+            renderContactList();
         }
     }
-    if (!saved || JSON.parse(saved || '[]').length === 0) {
-        addMessage('今天要搞定什么呀～', 'ai');
+});
+
+// 清空记录按钮
+document.getElementById('modal-clear-history').addEventListener('click', () => {
+    if (confirm('确定要清空与该角色的聊天记录吗？')) {
+        const c = contacts.find(x => x.id === editingId);
+        if (c) {
+            c.history = []; // 清空
+            saveData();
+            modalOverlay.classList.add('hidden');
+            if (currentContactId === editingId) {
+                chatMessages.innerHTML = ''; // 实时清屏
+            }
+        }
     }
-    chatWindow.scrollTop = chatWindow.scrollHeight;
 });
 
-function saveHistory() {
-    const toSave = messageHistory.filter(m => m.role !== "system");
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    console.log('%c聊天记录已保存到 localStorage', 'color: #a6e3a1;');
-}
-
-// ============= 重roll =============
-// ====== 额外优化：没聊天记录时禁用底部重roll按钮 ======
-function updateRerollButtonState() {
-    const hasHistory = messageHistory.some(m => m.role === 'assistant');
-    const btn = document.getElementById('reroll-footer-btn');
-    btn.disabled = !hasHistory;
-    btn.style.opacity = hasHistory ? '1' : '0.4';
-    btn.style.cursor = hasHistory ? 'pointer' : 'not-allowed';
-}
-
-// 页面加载时执行一次
-window.addEventListener('load', () => {
-    // 你原来的 load 代码……
-    updateRerollButtonState();
+// 关闭弹窗
+document.getElementById('modal-cancel').addEventListener('click', () => {
+    modalOverlay.classList.add('hidden');
 });
 
+// 事件绑定
+document.getElementById('add-contact-btn').addEventListener('click', () => openModal(null));
+document.getElementById('chat-settings-btn').addEventListener('click', () => openModal(currentContactId));
 
+sendButton.addEventListener('click', () => handleSend(false));
+taskInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleSend(false);
+});
+rerollBtn.addEventListener('click', () => handleSend(true));
 
-
+// 启动
+window.addEventListener('load', init);

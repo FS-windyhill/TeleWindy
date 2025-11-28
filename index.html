@@ -2,39 +2,101 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FS小手机</title>
-
-    <!-- 这两行是 PWA 必备 -->
+    
+    <!-- PWA 相关 -->
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/icon192.png">
-    
-    <!-- 下面这两行是 iPhone 专用的（可加可不加） -->
     <link rel="apple-touch-icon" href="/icon192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app-container">
-        <header class="app-header">
-            <h1>小真蛸</h1>
-            <p id="typing-status">在线</p>
-            <button id="clear-button" title="清空聊天记录">×</button>
-        </header>
-        <div id="chat-window">
-            <div id="chat-messages">
-                <!-- 聊天消息会在这里动态添加 -->
+        
+        <!-- ======================= -->
+        <!-- 页面 1：好友列表 (首页) -->
+        <!-- ======================= -->
+        <div id="view-contact-list">
+            <header class="app-header">
+                <h1>通讯录</h1>
+                <!-- 右上角添加按钮 -->
+                <button id="add-contact-btn" class="header-icon-btn right" title="添加新角色">＋</button>
+            </header>
+            
+            <div id="contact-list-container">
+                <!-- 这里的列表由 JS 动态生成 -->
             </div>
         </div>
-        <footer class="app-footer">
-            <button id="reroll-footer-btn" class="footer-btn" title="重新生成最后一条回复">✦</button>
-            <input type="text" id="task-input" placeholder="请输入消息...">
-            <button id="send-button">➤</button>
-        </footer>
+
+        <!-- ======================= -->
+        <!-- 页面 2：聊天窗口 (隐藏) -->
+        <!-- ======================= -->
+        <div id="view-chat" class="hidden">
+            <header class="app-header">
+                <!-- 左上角返回按钮 -->
+                <button id="back-btn" class="header-icon-btn left" title="返回列表">‹</button>
+                
+                <h1 id="chat-title">角色名</h1>
+                <!-- 状态文本 -->
+                <p id="typing-status">在线</p>
+
+                <!-- 右上角设置按钮 (原来的清空按钮改成了这个，或者并在设置里) -->
+                <button id="chat-settings-btn" class="header-icon-btn right" title="设置/清空">⚙</button>
+            </header>
+            
+            <div id="chat-window">
+                <div id="chat-messages">
+                    <!-- 消息由 JS 动态插入 -->
+                </div>
+            </div>
+
+            <footer class="app-footer">
+                <button id="reroll-footer-btn" class="footer-btn">✦</button>
+                <input type="text" id="task-input" placeholder="说点什么...">
+                <button id="send-button">➤</button>
+            </footer>
+        </div>
+
     </div>
+
+    <!-- ======================= -->
+    <!-- 弹窗：编辑/添加角色 -->
+    <!-- ======================= -->
+    <div id="modal-overlay" class="hidden">
+        <div class="modal glass-panel">
+            <h2 id="modal-title">编辑角色</h2>
+            
+            <div class="input-group">
+                <label>名字</label>
+                <input type="text" id="edit-name" placeholder="例如：毒舌女仆">
+            </div>
+
+            <div class="input-group">
+                <label>头像 (Emoji 或 图片URL)</label>
+                <input type="text" id="edit-avatar" placeholder="🦑 或 http://..." value="🦑">
+            </div>
+
+            <div class="input-group">
+                <label>人设 (System Prompt)</label>
+                <textarea id="edit-prompt" rows="5" placeholder="你是一个..."></textarea>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="modal-cancel">取消</button>
+                <button id="modal-save" class="primary">保存</button>
+            </div>
+            
+            <div class="modal-danger-zone">
+                <button id="modal-clear-history" class="danger-btn outline">清空聊天记录</button>
+                <button id="modal-delete" class="danger-btn">删除此角色</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
-
 </html>

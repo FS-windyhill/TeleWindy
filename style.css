@@ -53,49 +53,6 @@ body {
 }
 
 
-/* 2. 全新设计的“清空”按钮样式 */
-#clear-button {
-    /* --- 定位保持不变 --- */
-    position: absolute;
-    top: 50%;
-    right: 16px;
-    transform: translateY(-50%);
-    
-    /* --- 1. 核心修复：强制盒子模型 --- */
-    box-sizing: border-box; 
-    
-    /* --- 2. 尺寸设定 --- */
-    /* 建议稍微给大丢丢到 26px 或 28px，手指更好点，这里保持你想要的 25px */
-    width: 25px !important;
-    height: 25px !important;
-    min-width: 25px;
-    min-height: 25px;
-    border-radius: 50%;
-    
-    /* --- 3. 完美的 Flex 居中 (关键！) --- */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;       /* 重点：一定要把 padding 归零！ */
-    
-    /* --- 4. 字体微调 --- */
-    font-size: 16px;  /* 字体必须比盒子小，icon 才会居中且不拥挤 */
-    line-height: 1;   /* 消除文字默认行高，防止垂直偏移 */
-    font-weight: 300; /*稍微细一点点更像现代App */
-    color: #818181;
-    
-    /* --- 外观样式 --- */
-    border: 1px solid #71717181;
-    background: rgba(236, 236, 236, 0.568);
-    
-    /* --- 5. iOS 专用修复 (防止苹果手机加默认按钮样式) --- */
-    -webkit-appearance: none;
-    appearance: none;
-    outline: none;
-}
-
-
-
 #clear-button:hover {
     background-color: #f5f5f5; /* 鼠标悬停时给一个淡淡的背景色 */
     border-color: #aaaaaa;     /* 边框颜色也加深一点 */
@@ -383,7 +340,411 @@ html, body {
 }
 
 
+/* 好友列表 */
 
+:root {
+    --primary-color: #f16c6c;
+    --background-color: #ffffff;
+    --text-color: #333;
+    --message-bg-user: #d1ffbed8;
+    --message-bg-ai: #ffffffd0;
+    --message-border-user: #96b37c;
+    --message-border-ai: #e8e8e8;    
+    --border-radius: 15px;
+    --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
+}
+
+html, body {
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background: url('wallpaper.jpg') center/cover no-repeat fixed;
+    /* 如果没有wallpaper.jpg，用这个备用色，防止一片白 */
+    background-color: #f2f2f2; 
+}
+
+.app-header {
+    position: relative;
+    padding: 12px 24px;
+    border-bottom: 1px solid rgba(220,220,220,0.9);
+    text-align: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 1.2em;
+    color: var(--primary-color);
+}
+
+.app-header p {
+    margin: 2px 0 0;
+    font-size: 0.8em;
+    color: #666;
+}
+
+#chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.app-footer {
+    padding: 8px 16px;
+    border-top: 1px solid rgba(220,220,220,0.9);
+    display: flex;
+    gap: 9px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+}
+
+#task-input {
+    flex-grow: 1;
+    padding: 5px 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1em;
+    background: rgba(255, 255, 255, 0.6) !important;
+}
+
+#task-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    background: rgba(255, 255, 255, 0.88) !important;
+}
+
+#send-button {
+    padding: 5px 12px;
+    border: none;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#reroll-footer-btn {
+    padding: 5px 9px;
+    border:1px solid rgba(127, 127, 127, 0.816);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 1em;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
+}
+
+/* 消息气泡样式 */
+.message-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    max-width: 85%;
+    opacity: 0;
+    animation: slideInUp 0.35s ease-out 0.05s forwards;
+}
+
+.message-wrapper.user {
+    flex-direction: row-reverse;
+    align-self: flex-end;
+}
+
+.message-wrapper.ai {
+    align-self: flex-start;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.message-bubble {
+    padding: 9px 14px;
+    border-radius: 12px;
+    max-width: 100%;
+    font-size: 16px;
+    line-height: 1.4;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.message-wrapper.user .message-bubble {
+    background: var(--message-bg-user);
+    border: 1px solid var(--message-border-user);
+    border-top-right-radius: 3px;
+}
+
+.message-wrapper.ai .message-bubble {
+    background: var(--message-bg-ai);
+    border: 1.3px solid var(--message-border-ai);
+    border-top-left-radius: 3px;
+}
+
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.typing::after {
+    content: '';
+    animation: ellipsis 1.5s infinite;
+}
+@keyframes ellipsis {
+    0%   { content: ''; }
+    25%  { content: '.'; }
+    50%  { content: '..'; }
+    75%  { content: '...'; }
+    100% { content: ''; }
+}
+
+#app-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+#chat-window {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 刘海屏优化 */
+@supports (padding-top: env(safe-area-inset-top)) {
+    body::before {
+        content: '';
+        position: fixed; top: 0; left: 0; right: 0;
+        height: env(safe-area-inset-top);
+        background: rgba(255,255,255,0.9); /* 这里我稍微改透明了一点，配合你的header */
+        z-index: 9999; pointer-events: none;
+    }
+    .app-header {
+        padding-top: calc(12px + env(safe-area-inset-top));
+    }
+}
+
+/* ============================================== */
+/* PART 2: 新增样式 (多角色、列表、弹窗) */
+/* ============================================== */
+
+/* 1. 视图切换容器 */
+#view-contact-list, #view-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+.hidden { display: none !important; }
+
+/* 2. Header 里的新按钮 (统一样式) */
+.header-icon-btn {
+    position: absolute;
+    top: 50%;
+    /* 修正垂直居中，考虑padding */
+    transform: translateY(-50%); 
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--primary-color); /* 用你的主题色 */
+    cursor: pointer;
+    padding: 0 10px;
+    height: 100%; /* 增加点击区域 */
+    display: flex;
+    align-items: center;
+}
+/* 因为你的header有padding-top(刘海屏)，所以上面的 top:50% 可能不准。
+   我们改为用 bottom定位，或者依赖 flex 布局。
+   为了不破坏你原本的布局，我们用绝对定位微调：
+*/
+.header-icon-btn.left { left: 10px; bottom: 5px; top: auto; transform: none; }
+.header-icon-btn.right { right: 10px; bottom: 5px; top: auto; transform: none; }
+
+/* 2. 全新设计的“清空”按钮样式 */
+.header-icon-btn.right {
+    /* --- 定位保持不变 --- */
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    
+    /* --- 1. 核心修复：强制盒子模型 --- */
+    box-sizing: border-box; 
+    
+    /* --- 2. 尺寸设定 --- */
+    /* 建议稍微给大丢丢到 26px 或 28px，手指更好点，这里保持你想要的 25px */
+    width: 25px !important;
+    height: 25px !important;
+    min-width: 25px;
+    min-height: 25px;
+    border-radius: 50%;
+    
+    /* --- 3. 完美的 Flex 居中 (关键！) --- */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;       /* 重点：一定要把 padding 归零！ */
+    
+    /* --- 4. 字体微调 --- */
+    font-size: 16px;  /* 字体必须比盒子小，icon 才会居中且不拥挤 */
+    line-height: 1;   /* 消除文字默认行高，防止垂直偏移 */
+    font-weight: 300; /*稍微细一点点更像现代App */
+    color: #818181;
+    
+    /* --- 外观样式 --- */
+    border: 1px solid #71717181;
+    background: rgba(236, 236, 236, 0.568);
+    
+    /* --- 5. iOS 专用修复 (防止苹果手机加默认按钮样式) --- */
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+}
+
+
+
+
+/* 3. 通讯录列表样式 */
+#contact-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.contact-item {
+    background: rgba(255, 255, 255, 0.75); /* 半透明白 */
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: transform 0.1s, background 0.2s;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+.contact-item:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.contact-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #eee;
+    margin-right: 15px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.contact-info {
+    flex: 1;
+    min-width: 0; /* 防止文字溢出撑开 */
+}
+
+.contact-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
+}
+
+.contact-info p {
+    margin: 0;
+    font-size: 13px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 4. 弹窗样式 (继承你的毛玻璃) */
+#modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); /* 背景黑一点 */
+    z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal {
+    width: 85%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 24px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: flex; flex-direction: column;
+    animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal h2 { margin: 0 0 20px 0; color: var(--primary-color); font-size: 18px; text-align: center; }
+
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; font-weight: bold; }
+.input-group input, .input-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9f9f9;
+    box-sizing: border-box; /* 关键 */
+}
+.input-group textarea { resize: none; font-family: inherit; }
+
+.modal-buttons {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;
+}
+.modal-buttons button {
+    padding: 8px 18px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer;
+}
+#modal-cancel { background: #eee; color: #666; }
+#modal-save { background: var(--primary-color); color: white; }
+
+.modal-danger-zone {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px dashed #ddd;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.danger-btn {
+    background: #ffc8c8; color: #d93025; border: none;
+    padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; width: 100%;
+}
+.danger-btn.outline { background: transparent; border: 1px solid #ff8d8d; }
 
 
 
