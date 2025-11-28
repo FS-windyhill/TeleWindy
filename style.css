@@ -333,7 +333,7 @@ html, body {
     
     /* 同时把 header 顶上去，贴着刘海走，不留白边 */
     .app-header {
-        padding-top: calc(12px + env(safe-area-inset-top));
+        padding-top: calc(0px + env(safe-area-inset-top));
         /* 如果你觉得标题太靠近顶部，可以再加个 4~8px */
         /* padding-top: calc(16px + env(safe-area-inset-top)); */
     }
@@ -532,19 +532,7 @@ body {
     flex-direction: column;
 }
 
-/* 刘海屏优化 */
-@supports (padding-top: env(safe-area-inset-top)) {
-    body::before {
-        content: '';
-        position: fixed; top: 0; left: 0; right: 0;
-        height: env(safe-area-inset-top);
-        background: rgba(255,255,255,0.9); /* 这里我稍微改透明了一点，配合你的header */
-        z-index: 9999; pointer-events: none;
-    }
-    .app-header {
-        padding-top: calc(12px + env(safe-area-inset-top));
-    }
-}
+
 
 /* ============================================== */
 /* PART 2: 新增样式 (多角色、列表、弹窗) */
