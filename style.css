@@ -36,6 +36,7 @@ body {
     flex-shrink: 0;
 }
 
+
 /* 这两部分的样式保持不变，确保文字垂直居中 */
 .app-header h1 {
     margin: 0;
@@ -62,6 +63,7 @@ body {
     height: 25px !important;
     min-width: 25px;             /* 防止被flex压缩 */
     min-height: 25px;
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
     
     display: flex;
@@ -152,13 +154,6 @@ body {
 
 #send-button:hover {
     background-color: #ff8383;
-}
-
-/* 加载动画 */
-#loading-indicator {
-    display: flex;
-    justify-content: center;
-    padding: 16px;
 }
 
 
@@ -356,29 +351,28 @@ html, body {
     border-radius: 0;
 }
 
-.thinking-dots {
-    display: inline-block;
-    animation: dots 1.5s infinite;
+/* 正在输入 */
+#typing-status {
+    margin: 4px 0 0;
+    font-size: 0.8em;
+    color: #999;
+    min-height: 1.2em;   /* 防止文字变了布局跳动 */
 }
 
-.thinking-dots span {
-    animation: blink 1.5s infinite;
+.typing {
+    font-style: normal !important;
 }
-
-.thinking-dots span:nth-child(1) { animation-delay: 0s; }
-.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes blink {
-    0%, 100% { opacity: 0.2; }
-    50%      { opacity: 1; }
+.typing::after {
+    content: '';
+    animation: ellipsis 1.5s infinite;
 }
-
-@keyframes dots {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-3px); }
+@keyframes ellipsis {
+    0%   { content: ''; }
+    25%  { content: '.'; }
+    50%  { content: '..'; }
+    75%  { content: '...'; }
+    100% { content: ''; }
 }
-
 
 
 
