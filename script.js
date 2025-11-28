@@ -430,6 +430,7 @@ const App = {
             UI.appendMessageBubble(userText, 'user');
             contact.history.push({ role: 'user', content: userText });
             UI.els.input.value = '';
+            UI.els.input.blur();
         }        
 
         Storage.saveContacts();
@@ -591,7 +592,7 @@ const App = {
     bindEvents() {
         // 1. 聊天输入
         UI.els.sendBtn.onclick = () => this.handleSend(false);
-        UI.els.input.onkeydown = (e) => e.key === 'Enter' && this.handleSend(false);
+        UI.els.input.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();App.handleSend(false)}};
         UI.els.rerollBtn.onclick = () => this.handleSend(true);
         document.getElementById('back-btn').onclick = () => UI.switchView('list');
 
@@ -774,4 +775,5 @@ window.importData = (input) => {
         } catch(err) { alert('文件格式错误'); }
     };
     reader.readAsText(input.files[0]);
+
 };
