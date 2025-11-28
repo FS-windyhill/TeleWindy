@@ -8,17 +8,21 @@
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
 }
 
-/* 1. body 改为真正的全屏布局，不再居中 */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f7f7f7;     /* 建议改成微信那种浅灰背景，更像 */
+/* 你原来的 body 样式全部删掉或注释就行 */
+html, body {
+    height: 100dvh;                     /* 2025年最正确的全屏写法 */
     margin: 0;
-    padding: 0;                     /* 重点！去掉所有 padding */
-    height: 100vh;                  /* 改用 vh 而不是 min-height */
-    overflow: hidden;               /* 防止页面整体滚动 */
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body {
     display: flex;
     flex-direction: column;
+    background: url('wallpaper.jpg') center/cover no-repeat fixed;
 }
+
 
 
 /* --- Header 最终布局样式 --- */
@@ -63,9 +67,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+
+    font-size: 25px;        /* 比之前再大一点点，最舒服的大小 */
+    color: #818181;            /* 深灰色，比黑色柔和 */
+    padding-top: 5px;
+    font-weight: 200;
     
-    border: 1.5px solid #cccccc;
-    background: rgba(209, 209, 209, 0.156);
+    border: 1.5px solid #717171ad;
+    background: rgba(236, 236, 236, 0.873);
 }
 
 
@@ -75,13 +84,6 @@ body {
     border-color: #aaaaaa;     /* 边框颜色也加深一点 */
 }
 
-#chat-window {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
 
 #chat-messages {
     display: flex;
@@ -307,20 +309,14 @@ body {
     to   { opacity: 1; }
 }
 
-
-/* 2. 全屏-彻底删除或注释掉 #app-container 的所有样式 */
+/* ======== 2. app-container 现在就是真正的 flex 爸爸 ======== */
 #app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;                  /* 只有这一行保留或加上 */
-    height: 70dvh;                 /* 推荐加上这行，适配 iPhone 刘海屏/动态岛 */
-    border-radius: 0 ;   /* 确保没有圆角 */
-    border: none;
-    box-shadow: none;
-    background: transparent;
-    backdrop-filter: none;
-    overflow: hidden;
+    flex: 1;                     /* 占满 body 所有剩余空间 */
+    min-height: 0;               /* 关键！允许 chat-window 里的 overflow-y 正常滚动 */
 }
+
 
 /* 3. 全屏-给最外层再加一层保险（推荐加上） */
 html, body {
@@ -328,28 +324,36 @@ html, body {
     overscroll-behavior: none;      /* 防止下拉刷新白屏（尤其是 iOS） */
 }
 
-/* 3. 顶栏和输入栏也加毛玻璃 + 贴边（保留你原来的美感，只是去掉圆角和阴影） */
+/* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
 .app-header {
-    position: relative;
+    flex-shrink: 0;              /* 顶栏不被压缩 */
+    /* 你原来的毛玻璃样式全部保留，超级好看 */
     padding: 12px 20px;
     border-bottom: 1px solid rgba(220,220,220,0.4);
-    background: rgba(255, 255, 255, 0.75);           /* 保留毛玻璃感 */
+    background: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(28px) saturate(180%);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-radius: 0;                                /* 贴顶无圆角 */
-    flex-shrink: 0;
+    border-radius: 0;
+}
+
+#chat-window {
+    flex: 1;                     /* 中间聊天区域吃掉所有剩余空间 */
+    overflow-y: auto;            /* 只有这里能滚动 */
+    min-height: 0;               /* 同样关键！ */
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
 }
 
 .app-footer {
+    flex-shrink: 0;              /* 输入框永远贴底 */
+    /* 你原来的毛玻璃样式也保留 */
     padding: 10px 16px;
     border-top: 1px solid rgba(220,220,220,0.4);
-    background: rgba(255, 255, 255, 0.55);           /* 稍微比顶栏实一点，像微信 */
+    background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(180%);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-radius: 0;                                /* 贴底无圆角 */
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
+    border-radius: 0;
 }
 
 .thinking-dots {
@@ -374,7 +378,6 @@ html, body {
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-3px); }
 }
-
 
 
 

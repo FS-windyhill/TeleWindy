@@ -50,6 +50,10 @@ const clearButton = document.getElementById('clear-button'); // <-- 新增这一
 let thinkingMessageWrapper = null;  // 用来记录当前正在思考的那条
 let currentRequestTask = null;        // 新增：记录当前正在请求的任务，用于重roll
 
+// 键盘弹出来时输入框自动顶上去
+window.visualViewport?.addEventListener('resize', () => {
+    document.body.style.height = `${window.visualViewport.height}px`;
+});
 
 function addThinkingBubble() {
     // 防止重复：先删掉上一次的思考气泡
