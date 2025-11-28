@@ -579,7 +579,7 @@ body {
    我们改为用 bottom定位，或者依赖 flex 布局。
    为了不破坏你原本的布局，我们用绝对定位微调：
 */
-.header-icon-btn.left { left: 10px; bottom: 5px; top: auto; transform: none; }
+.header-icon-btn.left { left: 10px; bottom: 0px; top: auto; transform: none; }
 .header-icon-btn.right { right: 10px; bottom: 5px; top: auto; transform: none; }
 
 /* 2. 全新设计的“清空”按钮样式 */
@@ -595,10 +595,50 @@ body {
     
     /* --- 2. 尺寸设定 --- */
     /* 建议稍微给大丢丢到 26px 或 28px，手指更好点，这里保持你想要的 25px */
-    width: 25px !important;
-    height: 25px !important;
-    min-width: 25px;
-    min-height: 25px;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px;
+    min-height: 28px;
+    border-radius: 50%;
+    
+    /* --- 3. 完美的 Flex 居中 (关键！) --- */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;       /* 重点：一定要把 padding 归零！ */
+    
+    /* --- 4. 字体微调 --- */
+    font-size: 16px;  /* 字体必须比盒子小，icon 才会居中且不拥挤 */
+    line-height: 1;   /* 消除文字默认行高，防止垂直偏移 */
+    font-weight: 300; /*稍微细一点点更像现代App */
+    color: #818181;
+    
+    /* --- 外观样式 --- */
+    border: 1px solid #71717181;
+    background: rgba(236, 236, 236, 0.568);
+    
+    /* --- 5. iOS 专用修复 (防止苹果手机加默认按钮样式) --- */
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+}
+
+.header-icon-btn.left {
+    /* --- 定位保持不变 --- */
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    
+    /* --- 1. 核心修复：强制盒子模型 --- */
+    box-sizing: border-box; 
+    
+    /* --- 2. 尺寸设定 --- */
+    /* 建议稍微给大丢丢到 26px 或 28px，手指更好点，这里保持你想要的 25px */
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px;
+    min-height: 28px;
     border-radius: 50%;
     
     /* --- 3. 完美的 Flex 居中 (关键！) --- */
@@ -726,12 +766,22 @@ body {
 .input-group textarea { resize: none; font-family: inherit; }
 
 .modal-buttons {
-    display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;
+    display: flex;
+    justify-content: center;    /* 水平居中 */
+    align-items: center;        /* 如果还需要垂直居中也加上这一行 */
+    gap: 12px;                  /* 如果有多个按钮，控制间距 */
 }
+
+/* 按钮本身的样式保持不变 */
 .modal-buttons button {
-    padding: 8px 18px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer;
+    padding: 7px 66px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
 }
-#modal-cancel { background: #eee; color: #666; }
+
+#modal-cancel { background: #d0d0d0; color: #666; }
 #modal-save { background: var(--primary-color); color: white; }
 
 .modal-danger-zone {
@@ -742,9 +792,119 @@ body {
 }
 .danger-btn {
     background: #ffc8c8; color: #d93025; border: none;
-    padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; width: 100%;
+    padding: 5px; border-radius: 8px; font-size: 13px; cursor: pointer; width: 100%;
 }
 .danger-btn.outline { background: transparent; border: 1px solid #ff8d8d; }
 
+/* ============= 新增样式：头像上传预览 ============= */
+.avatar-upload-group .avatar-preview-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
 
+.avatar-preview {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    background: #f0f0f0;
+    flex-shrink: 0;
+}
+
+.avatar-preview[src^="data:"],
+.avatar-preview:not([src=""]),
+.avatar-preview[src$=".png"],
+.avatar-preview[src$=".jpg"],
+.avatar-preview[src$=".jpeg"],
+.avatar-preview[src$=".webp"] {
+    background: transparent;
+}
+
+/* emoji 头像特殊处理（保持居中） */
+.avatar-preview[alt]:not([src*="http"]):not([src^="data:"]) {
+    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee;
+}
+
+.small-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* ============= 壁纸设置弹窗样式 ============= */
+#wallpaper-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+
+.wallpaper-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.wallpaper-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.wallpaper-option:hover {
+    background: rgba(255,255,255,0.95);
+}
+
+.wallpaper-option input[type="radio"] {
+    margin: 0;
+}
+
+.wallpaper-option.upload {
+    border: 2px dashed #ccc;
+    justify-content: center;
+    font-size: 14px;
+    color: #666;
+}
+
+.wallpaper-option.upload input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.wallpaper-preview {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.wallpaper-preview img {
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
 
