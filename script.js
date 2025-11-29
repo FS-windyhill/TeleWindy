@@ -762,7 +762,7 @@ window.exportData = () => {
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_` +
-                      `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+                      `${pad(now.getHours()}`;
     a.download = `TeleWindy-Backup-${timestamp}.json`;
     // ————————————————
 
@@ -786,4 +786,5 @@ window.importData = (input) => {
     reader.readAsText(input.files[0]);
 
 };
+
 
