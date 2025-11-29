@@ -294,17 +294,16 @@ const UI = {
             if (msg.role === 'system') return;
             const sender = msg.role === 'assistant' ? 'ai' : 'user';
 
-            // ★★★★★ 只取 content，绝不显示 timestamp！★★★★★
-            const cleanText = typeof msg === 'string' 
-                ? msg                                 // 老数据兼容（字符串）
-                : msg.content || '';                  // 新数据取 content
+            const cleanText = typeof msg === 'string' ? msg : msg.content || '';
+            // 获取该条消息的时间戳，如果没有则用 undefined (appendMessageBubble 会自动生成当前时间)
+            const msgTime = typeof msg === 'string' ? null : msg.timestamp;
             
             // 分段渲染逻辑
-            const paragraphs = msg.content.split(/\n\s*\n/).filter(p => p.trim());
+            const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim());
             if (paragraphs.length > 0) {
-                paragraphs.forEach(p => this.appendMessageBubble(p.trim(), sender, contact.avatar));
+                paragraphs.forEach(p => this.appendMessageBubble(p.trim(), sender, contact.avatar, msgTime));
             } else if (cleanText.trim()) {
-                this.appendMessageBubble(cleanText.trim(), sender, contact.avatar);
+                this.appendMessageBubble(cleanText.trim(), sender, contact.avatar, msgTime);
             }
         });
 
@@ -323,24 +322,59 @@ const UI = {
     },
 
 
-    appendMessageBubble(text, sender, aiAvatarUrl) {
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${sender}`;
+    appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw) {
+        // 1. 获取 HTML 中的模板
+        const template = document.getElementById('msg-template');
+        // 2. 克隆一份模板内容 (true 表示深度克隆，包含子元素)
+        const clone = template.content.cloneNode(true);
+        
+        // 3. 获取克隆出来的各个节点
+        const wrapper = clone.querySelector('.message-wrapper');
+        const bubble = clone.querySelector('.message-bubble');
+        const timeSpan = clone.querySelector('.msg-time');
+        const avatarImg = clone.querySelector('.avatar-img');
+        const avatarText = clone.querySelector('.avatar-text');
 
-        let avatarHtml;
-        if (sender === 'user') {
-            const userAv = STATE.settings.USER_AVATAR;
-            avatarHtml = `<img class="avatar" src="${userAv}" onerror="this.src='char.jpg'">`;
+        // 4. 设置类名 (ai 或 user) -> 这决定了 CSS 里的左右布局
+        wrapper.classList.add(sender);
+
+        // 5. 填充文本内容
+        bubble.innerText = text;
+
+        // 6. 处理时间戳
+        let timeStr = "";
+        if (timestampRaw && timestampRaw.includes(' ')) {
+            timeStr = timestampRaw.split(' ')[1]; 
         } else {
-            if (aiAvatarUrl && (aiAvatarUrl.startsWith('http') || aiAvatarUrl.startsWith('data:'))) {
-                avatarHtml = `<img class="avatar" src="${aiAvatarUrl}" onerror="this.style.display='none'">`;
-            } else {
-                avatarHtml = `<div class="avatar" style="background:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;">${aiAvatarUrl || '🤖'}</div>`;
-            }
+            const n = new Date();
+            timeStr = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+        }
+        timeSpan.innerText = timeStr;
+
+        // 7. 处理头像 (逻辑：如果是 URL 用 img，如果是 Emoji 用 div)
+        let currentAvatar = '';
+        if (sender === 'user') {
+            currentAvatar = STATE.settings.USER_AVATAR || 'char.jpg';
+        } else {
+            currentAvatar = aiAvatarUrl || '🤖';
         }
 
-        wrapper.innerHTML = `${avatarHtml}<div class="message-content"><div class="message-bubble">${text}</div></div>`;
-        this.els.chatMsgs.appendChild(wrapper);
+        // 判断是否为图片 URL (简单的判断：以 http 开头或 data:image 开头)
+        const isImage = currentAvatar.startsWith('http') || currentAvatar.startsWith('data:');
+
+        if (isImage) {
+            avatarImg.src = currentAvatar;
+            // 如果加载失败，显示默认
+            avatarImg.onerror = () => { avatarImg.style.display='none'; avatarText.style.display='flex'; avatarText.innerText='?'; };
+            avatarText.style.display = 'none';
+        } else {
+            avatarImg.style.display = 'none';
+            avatarText.style.display = 'flex'; // Flex 用于居中 emoji
+            avatarText.innerText = currentAvatar;
+        }
+
+        // 8. 将组装好的 DOM 插入页面
+        this.els.chatMsgs.appendChild(clone);
         this.scrollToBottom();
     },
 
@@ -367,11 +401,12 @@ const UI = {
     },
 
     // 瀑布流打字机效果
-    async playWaterfall(fullText, avatar) {
+    async playWaterfall(fullText, avatar, timestamp) {
         const paragraphs = fullText.split(/\n\s*\n/).filter(p => p.trim());
         for (let i = 0; i < paragraphs.length; i++) {
             if (i > 0) await new Promise(r => setTimeout(r, 400));
-            this.appendMessageBubble(paragraphs[i], 'ai', avatar);
+            // 传入时间戳
+            this.appendMessageBubble(paragraphs[i], 'ai', avatar, timestamp);
         }
     }
 };
@@ -435,10 +470,13 @@ const App = {
         } else {
             // 正常发送
             if (!userText) return;
-            // ★★★★★ 关键修改：用户消息带上时间戳 ★★★★★
+            // 用户消息带上时间戳
             const taggedUserText = `[${timestamp}] ${userText}`;
-            UI.appendMessageBubble(userText, 'user');                 // 界面上仍然显示纯文字（更清爽）
-            // ★★★★★ 关键：存成对象，content 保持纯净 ★★★★★
+
+            // ★修改点1：调用 appendMessageBubble 时传入 timestamp
+            UI.appendMessageBubble(userText, 'user', null, timestamp); 
+
+            // 存成对象，content 保持纯净
             contact.history.push({ 
                 role: 'user', 
                 content: userText,           // 纯文字，界面用这个
@@ -478,7 +516,7 @@ const App = {
 
         try {
             const aiText = await API.chat(messagesToSend, STATE.settings);
-            
+           
             const aiTimestamp = formatTimestamp();
             const taggedAiText = `[${aiTimestamp}] ${aiText}`;
 
@@ -490,7 +528,8 @@ const App = {
             Storage.saveContacts();
             
             UI.setLoading(false);
-            await UI.playWaterfall(aiText, contact.avatar); // 播放时去掉时间戳，界面更干净
+            // ★修改点2：调用 playWaterfall 时传入 aiTimestamp
+            await UI.playWaterfall(aiText, contact.avatar, aiTimestamp)
 
         } catch (error) {
             console.error(error);

@@ -77,6 +77,28 @@
 
     </div>
 
+    <!-- ========================================== -->
+    <!-- 新增：消息气泡模板 (Template)               -->
+    <!-- 这是一个隐藏的模具，JS 会复制它来生成消息    -->
+    <!-- ========================================== -->
+    <template id="msg-template">
+        <div class="message-wrapper">
+            <!-- 1. 头像 -->
+            <div class="avatar-container">
+                <img class="avatar-img" src="" alt="avatar">
+                <div class="avatar-text" style="display:none;"></div>
+            </div>
+            
+            <!-- 2. 气泡内容 -->
+            <div class="message-content">
+                <div class="message-bubble"></div>
+            </div>
+
+            <!-- 3. 时间戳 (放在气泡外面) -->
+            <span class="msg-time"></span>
+        </div>
+    </template>
+
     <!-- ======================= -->
     <!-- 弹窗：编辑/添加角色 -->
     <!-- ======================= -->
