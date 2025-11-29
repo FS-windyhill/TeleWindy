@@ -4,7 +4,7 @@
     --text-color: #333;
     --message-bg-user: #d1ffbed8;
     --message-bg-ai: #ffffffd0;
-    --message-border-user: #96b37c;
+    --message-border-user: #bad1a6;
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
@@ -1127,4 +1127,5 @@ body {
     color: #888;
     min-height: 1.5em; 
     width: 100%; /* 确保它也撑满宽度并靠左 */
+
 }
