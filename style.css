@@ -176,15 +176,21 @@ body {
 
 
 
-/* ========= 2. 头像尺寸和圆角 ========= */
-.avatar {
+/* --- 头像样式调整 --- */
+.avatar-container {
     width: 40px;
     height: 40px;
+    flex-shrink: 0; /* 防止被挤压 */
+    margin: 0 10px; /* 头像左右留白 */
+}
+
+.avatar-img, .avatar-text {
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
+
 
 /* ========= 3. 气泡收紧（文字更密集好看） ========= */
 .message-bubble {
@@ -1090,22 +1096,6 @@ body {
    消息列表布局优化
    ========================================= */
 
-/* --- 头像样式调整 --- */
-.avatar-container {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0; /* 防止被挤压 */
-    margin: 0 10px; /* 头像左右留白 */
-}
-
-.avatar-img, .avatar-text {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-
 /* --- 时间戳样式 (重点) --- */
 .msg-time {
     font-size: 11px;
@@ -1119,6 +1109,7 @@ body {
     
     white-space: nowrap; /* 防止时间换行 */
     opacity: 0.8;
+    align-items: flex-end;
 }
 
 
