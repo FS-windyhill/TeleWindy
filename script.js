@@ -38,7 +38,7 @@ const CONFIG = {
 人类说话是不会带括号和动作描写的。所以你应该的输出应该贴合人类的说话方式，直接输出说话的内容。
 你想说啥就说啥，不必拘束。
 每次输出3~9句话左右，每两句话中间空一行。
-你所在系统会在上下文里加入一个这样格式的时间戳：[Nov.29 15:19]，你**禁止输出这个时间戳，这并非你需要输出的内容**。
+系统会在上下文里**自动**加入一个时间戳，不需要你输出。所以你**禁止输出时间戳**，否则会严重影响交互效果。
     `
 };
 
@@ -879,9 +879,10 @@ function formatTimestamp() {
     const day = now.getDate();
     const hour = now.getHours().toString().padStart(2, '0');
     const minute = now.getMinutes().toString().padStart(2, '0');
-    return `${month}.${day} ${hour}:${minute}`;
+    return `当前时间（系统自动添加）：${month}.${day} ${hour}:${minute}`;
 }
 // 示例输出：Nov.29 15:09
+
 
 
 
