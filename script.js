@@ -518,7 +518,7 @@ const App = {
             const aiText = await API.chat(messagesToSend, STATE.settings);
            
             const aiTimestamp = formatTimestamp();
-            const taggedAiText = `[${aiTimestamp}] ${aiText}`;
+            const taggedAiText = `${aiText}`;
 
             contact.history.push({ 
                 role: 'assistant', 
@@ -882,6 +882,7 @@ function formatTimestamp() {
     return `当前时间（系统自动添加）：${month}.${day} ${hour}:${minute}`;
 }
 // 示例输出：Nov.29 15:09
+
 
 
 
