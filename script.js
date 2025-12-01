@@ -31,7 +31,7 @@ const CONFIG = {
         // 建议留空，强制用户输入，或者放一个公共体验 Key
         API_KEY: '', 
         WALLPAPER: 'wallpaper.jpg',
-        USER_AVATAR: 'char.jpg'
+        USER_AVATAR: 'user.jpg'
     },
     SYSTEM_PROMPT: `
 请完全代入角色设定，以该角色的语气和思考方式，与用户交流。
@@ -353,9 +353,9 @@ const UI = {
         // 7. 处理头像 (逻辑：如果是 URL 用 img，如果是 Emoji 用 div)
         let currentAvatar = '';
         if (sender === 'user') {
-            currentAvatar = STATE.settings.USER_AVATAR || 'char.jpg';
+            currentAvatar = STATE.settings.USER_AVATAR || 'user.jpg';
         } else {
-            currentAvatar = aiAvatarUrl || '🤖';
+            currentAvatar = aiAvatarUrl || '🌸';
         }
 
         // 判断是否为图片 URL (简单的判断：以 http 开头或 data:image 开头)
@@ -772,7 +772,7 @@ const App = {
         const userPreview = document.getElementById('user-avatar-preview');
         
         // 设置用户头像预览
-        userPreview.src = STATE.settings.USER_AVATAR || 'char.jpg';
+        userPreview.src = STATE.settings.USER_AVATAR || 'user.jpg';
 
         if (id) {
             const c = STATE.contacts.find(x => x.id === id);
