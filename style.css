@@ -522,7 +522,7 @@ body {
 #contact-list-wrapper {
     width: 90vw;
     max-width: 520px;          /* 手机/平板不会太宽 */
-    height: 85vh;
+    height: 88vh;
     max-height: 820px;
     margin: auto;              /* 上下左右自动居中 */
     background: rgba(255, 255, 255, 0.72);     /* 亮色壁纸推荐 0.72 */
@@ -820,12 +820,6 @@ body {
     border: 1px solid rgba(0,0,0,0.08);
 }
 
-.main-option:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
 .main-option input[type="radio"] {
     margin: 0;
     width: 18px;
@@ -834,7 +828,7 @@ body {
 }
 
 .wallpaper-option.upload {
-    border: 2.5px dashed rgba(122, 122, 122, 0.707);
+    border: 1.5px dashed rgba(62, 62, 62, 0.707);
     justify-content: center;
     color: #7d7d7d;
     font-weight: 500;
