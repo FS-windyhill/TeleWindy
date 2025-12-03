@@ -79,8 +79,8 @@ const Storage = {
             STATE.contacts.push({
                 id: Date.now().toString(),
                 name: '小真蛸',
-                avatar: '🦑',
-                prompt: '你是一个温柔可爱的助手小真蛸，说话请带上“🦑”及颜文字。',
+                avatar: 'char.jpg',
+                prompt: '你是一个温柔可爱的助手小真蛸，说话请带上颜文字。',
                 history: []
             });
         }
@@ -102,7 +102,7 @@ const Storage = {
                 STATE.contacts.push({
                     id: 'legacy_' + Date.now(),
                     name: '小真蛸 (旧版)',
-                    avatar: '🦑',
+                    avatar: 'char.jpg',
                     prompt: '旧版数据迁移角色',
                     history: history
                 });
@@ -890,7 +890,152 @@ function formatTimestamp() {
 }
 // 示例输出：Nov.29 15:09
 
+// Github Gist线上同步
+// ==================== GitHub Gist 同步功能 ====================
+const gistTokenInput = document.getElementById('gist-token');
+const gistStatusDiv  = document.getElementById('gist-status');
 
+// 从 localStorage 读取之前保存的 gist id（如果有）
+let currentGistId = localStorage.getItem('telewindy-gist-id') || null;
+
+// 工具：显示状态
+function showGistStatus(msg, isError = false) {
+    gistStatusDiv.textContent = msg;
+    gistStatusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
+}
+
+// 工具：导出全部 localStorage 数据
+function exportAllData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        data[key] = localStorage.getItem(key);
+    }
+    return data;
+}
+
+// 工具：导入全部数据（覆盖当前）
+function importAllData(data) {
+    localStorage.clear();
+    Object.keys(data).forEach(key => {
+        localStorage.setItem(key, data[key]);
+    });
+}
+
+// 创建新 gist 并备份（第一次用）
+document.getElementById('gist-create-and-backup').addEventListener('click', async () => {
+    const token = gistTokenInput.value.trim();
+    if (!token) return showGistStatus('请先填写 GitHub Token', true);
+
+    showGistStatus('正在创建 gist 并备份...');
+    const allData = exportAllData();
+
+    const payload = {
+        description: "TeleWindy 聊天记录与配置自动备份",
+        public: false,
+        files: {
+            "telewindy-backup.json": {
+                content: JSON.stringify({
+                    backup_at: new Date().toISOString(),
+                    app: "TeleWindy",
+                    data: allData
+                }, null, 2)
+            }
+        }
+    };
+
+    try {
+        const res = await fetch('https://api.github.com/gists', {
+            method: 'POST',
+            headers: {
+                Authorization: `token ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.id) {
+            currentGistId = json.id;
+            localStorage.setItem('telewindy-gist-id', currentGistId);
+            showGistStatus(`创建成功并已备份！Gist ID: ${currentGistId.slice(0, 8)}...`);
+        } else {
+            showGistStatus('创建失败：' + (json.message || '未知错误'), true);
+        }
+    } catch (e) {
+        showGistStatus('网络错误：' + e.message, true);
+    }
+});
+
+// 仅备份（更新已有 gist）
+document.getElementById('gist-backup').addEventListener('click', async () => {
+    if (!currentGistId) return showGistStatus('还未创建过 gist，请先点「创建并备份」', true);
+    const token = gistTokenInput.value.trim();
+    if (!token) return showGistStatus('请填写 Token', true);
+
+    showGistStatus('正在更新备份...');
+    const allData = exportAllData();
+
+    const payload = {
+        gist_id: currentGistId,
+        files: {
+            "telewindy-backup.json": {
+                content: JSON.stringify({
+                    backup_at: new Date().toISOString(),
+                    app: "TeleWindy",
+                    data: allData
+                }, null, 2)
+            }
+        }
+    };
+
+    try {
+        const res = await fetch(`https://api.github.com/gists/${currentGistId}`, {
+            method: 'PATCH',
+            headers: {
+                Authorization: `token ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showGistStatus('备份更新成功！' + new Date().toLocaleTimeString());
+        } else {
+            const err = await res.json();
+            showGistStatus('备份失败：' + (err.message || res.status), true);
+        }
+    } catch (e) {
+        showGistStatus('网络错误：' + e.message, true);
+    }
+});
+
+// 从云端恢复
+document.getElementById('gist-restore').addEventListener('click', async () => {
+    if (!currentGistId) return showGistStatus('还未创建过备份', true);
+    const token = gistTokenInput.value.trim();
+    if (!token) return showGistStatus('请填写 Token', true);
+
+    showGistStatus('正在从云端拉取数据...');
+    try {
+        const res = await fetch(`https://api.github.com/gists/${currentGistId}`, {
+            headers: { Authorization: `token ${token}` }
+        });
+        const json = await res.json();
+        const file = json.files['telewindy-backup.json'];
+        if (!file) return showGistStatus('备份文件不存在', true);
+
+        const content = JSON.parse(file.content);
+        importAllData(content.data);
+        showGistStatus('恢复成功！即将刷新页面...（3秒后自动刷新）');
+        setTimeout(() => location.reload(), 3000);
+    } catch (e) {
+        showGistStatus('恢复失败：' + e.message, true);
+    }
+});
+
+// 页面加载时如果已经有 gist id，就提示一下
+if (currentGistId) {
+    showGistStatus(`已检测到云备份 ID: ${currentGistId.slice(0, 8)}...（可直接备份/恢复）`, false);
+}
 
 
 

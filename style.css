@@ -1003,7 +1003,7 @@ body {
     border: none;
     font-size: 14px;
     cursor: pointer;
-    background: #ea656d;
+    background: var(--primary-color);
     color: white;
     flex-shrink: 0; /* 防止按钮在空间不足时被压缩 */
     transition: background-color 0.2s ease;
@@ -1030,6 +1030,115 @@ body {
     margin: 1px 3px;           /* 可选：稍微往左缩一点，不贴边太死 */
 }
 
+
+/* ========== GitHub Gist 云同步模块美化 ========== */
+
+/* 模块标题 */
+.section-title {
+    margin: 30px 0 16px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #333;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* 整个卡片容器 */
+.gist-sync-card {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* 输入框组 */
+.input-group {
+    margin-bottom: 16px;
+}
+
+.input-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.setting-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: #f9f9f9;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.setting-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.input-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: #666;
+}
+
+/* 按钮区域 */
+.gist-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.gist-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.gist-btn:hover {
+    background: #d2d2d2;
+}
+
+/* 主按钮（创建并备份）红色风格，和你原来的 primary 一致 */
+.gist-btn.primary {
+    background: var(--primary-color);   /* 你原来是 #dc3545 之类的大红 */
+    color: white;
+    border: none;
+}
+
+.gist-btn.primary:hover {
+    background: rgb(220, 98, 98);
+}
+
+/* 状态提示区 */
+.gist-status {
+    padding-top: 5px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1;
+}
+
+/* 成功/错误状态（可选，你 JS 里可以加 class） */
+.gist-status.success { color: #28a745; }
+.gist-status.error   { color: #dc3545; }
 
 
 
