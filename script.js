@@ -79,7 +79,7 @@ const Storage = {
             STATE.contacts.push({
                 id: Date.now().toString(),
                 name: '小真蛸',
-                avatar: 'char.jpg',
+                avatar: '😊',
                 prompt: '你是一个温柔可爱的助手小真蛸，说话请带上颜文字。',
                 history: []
             });
