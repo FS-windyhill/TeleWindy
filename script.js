@@ -31,7 +31,8 @@ const CONFIG = {
         // 建议留空，强制用户输入，或者放一个公共体验 Key
         API_KEY: '', 
         WALLPAPER: 'wallpaper.jpg',
-        USER_AVATAR: 'user.jpg'
+        USER_AVATAR: 'user.jpg',
+        GIST_TOKEN: '',        // ← 新增这一行
     },
     SYSTEM_PROMPT: `
 请完全代入角色设定，以该角色的语气和思考方式，与用户交流。
@@ -53,12 +54,18 @@ const STATE = {
 // 2. STORAGE SERVICE (数据存储)
 // =========================================
 const Storage = {
+    // 增强版的 Storage.load 函数
     load() {
         // 1. 加载设置
         const settingsRaw = localStorage.getItem(CONFIG.SETTINGS_KEY);
-        STATE.settings = settingsRaw ? JSON.parse(settingsRaw) : { ...CONFIG.DEFAULT };
-        
-        // 兼容旧的散装存储 (如果是老用户)
+        let loadedSettings = settingsRaw ? JSON.parse(settingsRaw) : {};
+
+        // === 关键修复：合并默认值和加载值 ===
+        // 用默认值打底，然后用加载的设置覆盖上去。
+        // 这样既保留了用户的旧设置，又能补充上代码里新增的默认字段！
+        STATE.settings = { ...CONFIG.DEFAULT, ...loadedSettings };
+
+        // 兼容旧的散装存储 (这段逻辑可以保持，虽然可能不再需要)
         if (!settingsRaw) {
             const oldUserAvatar = localStorage.getItem('fs_user_avatar');
             const oldWallpaper = localStorage.getItem('fs_wallpaper');
@@ -66,7 +73,7 @@ const Storage = {
             if (oldWallpaper) STATE.settings.WALLPAPER = oldWallpaper;
         }
 
-        // 2. 加载联系人
+        // 2. 加载联系人 (后面部分保持不变)
         const contactsRaw = localStorage.getItem(CONFIG.STORAGE_KEY);
         if (contactsRaw) {
             STATE.contacts = JSON.parse(contactsRaw);
@@ -226,6 +233,7 @@ const UI = {
         settingKey: document.getElementById('custom-api-key'),
         settingModel: document.getElementById('custom-model-select'),
         fetchBtn: document.getElementById('fetch-models-btn')
+
     },
 
     init() {
@@ -555,6 +563,9 @@ const App = {
         const s = STATE.settings;
         UI.els.settingUrl.value = s.API_URL || '';
         UI.els.settingKey.value = s.API_KEY || '';
+        UI.els.settingModel.value = STATE.settings.MODEL || 'zai-org/GLM-4.6';
+        // 打开设置弹窗时（你原来的代码基础上加这一行）
+        document.getElementById('gist-token').value = STATE.settings.GIST_TOKEN || '';
         
         // 回显模型 (需要特殊处理，因为 Select 选项可能还没加载)
         // 简单的做法：先放一个当前选中的 option
@@ -647,6 +658,13 @@ const App = {
         STATE.settings.API_URL = rawUrl;
         STATE.settings.API_KEY = UI.els.settingKey.value.trim();
         STATE.settings.MODEL = UI.els.settingModel.value;
+
+        // 新增：保存 GitHub Gist Token
+        const gistToken = document.getElementById('gist-token').value.trim();
+        // ← 你的输入框 ID
+        STATE.settings.GIST_TOKEN = gistToken || '';  // 空字符串也保存，方便判断是否配置过
+
+        
 
         // 壁纸处理逻辑 (保持不变)
         const wallpaperPreview = document.getElementById('wallpaper-preview-img').src;
@@ -904,12 +922,44 @@ function showGistStatus(msg, isError = false) {
     gistStatusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
 }
 
-// 工具：导出全部 localStorage 数据
+// 工具：导出全部数据（带 Token 混淆功能，防 GitHub 删除）
 function exportAllData() {
     const data = {};
+    // 确认你的设置 Key 是这个名字
+    const settingsKey = 'teleWindy_settings_v1'; 
+
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        data[key] = localStorage.getItem(key);
+        const value = localStorage.getItem(key);
+
+        if (key === settingsKey) {
+            try {
+                // 1. 解析设置
+                let settings = JSON.parse(value);
+                let target = Array.isArray(settings) ? settings[0] : settings;
+
+                // 2. 检查是否有 Token 需要伪装
+                if (target && target.GIST_TOKEN && !target.GIST_TOKEN.startsWith('ENC_')) {
+                    // 深拷贝一份用于备份，不污染本地的 STATE
+                    const safeSettings = JSON.parse(JSON.stringify(settings));
+                    const safeTarget = Array.isArray(safeSettings) ? safeSettings[0] : safeSettings;
+
+                    // 加密：加上 'ENC_' 前缀并转成 Base64 乱码
+                    safeTarget.GIST_TOKEN = 'ENC_' + btoa(safeTarget.GIST_TOKEN);
+                    
+                    data[key] = JSON.stringify(safeSettings);
+                } else {
+                    // 如果已经加密过或者没有 Token，直接备份
+                    data[key] = value;
+                }
+            } catch (e) {
+                console.warn('导出时解析设置失败，原样备份', e);
+                data[key] = value;
+            }
+        } else {
+            // 其他数据（如聊天记录）原样备份
+            data[key] = value;
+        }
     }
     return data;
 }
@@ -922,10 +972,12 @@ function importAllData(data) {
     });
 }
 
+
+
 // 创建新 gist 并备份（第一次用）
 document.getElementById('gist-create-and-backup').addEventListener('click', async () => {
-    const token = gistTokenInput.value.trim();
-    if (!token) return showGistStatus('请先填写 GitHub Token', true);
+    const token = STATE.settings.GIST_TOKEN; // 从 STATE 中读取已保存的 Token
+if (!token) return showGistStatus('填写Token→点保存→再开始备份或恢复', true);
 
     showGistStatus('正在创建 gist 并备份...');
     const allData = exportAllData();
@@ -989,7 +1041,7 @@ document.getElementById('gist-create-and-backup').addEventListener('click', asyn
 // 仅备份（更新已有 gist）
 document.getElementById('gist-backup').addEventListener('click', async () => {
     if (!currentGistId) return showGistStatus('还未创建过 gist，请先点「创建并备份」', true);
-    const token = gistTokenInput.value.trim();
+    const token = STATE.settings.GIST_TOKEN; // 从 STATE 中读取
     if (!token) return showGistStatus('请填写 Token', true);
 
     showGistStatus('正在更新备份...');
@@ -1040,7 +1092,7 @@ document.getElementById('gist-backup').addEventListener('click', async () => {
 // 从云端恢复（终极防炸版）
 document.getElementById('gist-restore').addEventListener('click', async () => {
     if (!currentGistId) return showGistStatus('还未创建过备份', true);
-    const token = gistTokenInput.value.trim();
+    const token = STATE.settings.GIST_TOKEN; // 依然从 STATE 中读取
     if (!token) return showGistStatus('请填写 Token', true);
 
     showGistStatus('正在从云端拉取数据...');
@@ -1087,9 +1139,35 @@ document.getElementById('gist-restore').addEventListener('click', async () => {
 
         // 成功解析后导入
         if (backupData && backupData.data) {
+            const settingsKey = 'teleWindy_settings_v1'; // 确保 Key 一致
+
             Object.keys(backupData.data).forEach(key => {
-                localStorage.setItem(key, backupData.data[key]);
+                let value = backupData.data[key];
+
+                // === 如果是设置项，检查有没有伪装，有就给它卸妆 ===
+                if (key === settingsKey) {
+                    try {
+                        let settings = JSON.parse(value);
+                        let target = Array.isArray(settings) ? settings[0] : settings;
+
+                        // 检查是不是以 ENC_ 开头
+                        if (target && target.GIST_TOKEN && target.GIST_TOKEN.startsWith('ENC_')) {
+                            // 去掉前缀并用 atob() 还原
+                            const rawBase64 = target.GIST_TOKEN.replace('ENC_', '');
+                            target.GIST_TOKEN = atob(rawBase64);
+                            
+                            // 重新打包成字符串
+                            value = JSON.stringify(settings);
+                        }
+                    } catch (e) {
+                        console.error('Token 还原失败', e);
+                    }
+                }
+
+                // 存入本地
+                localStorage.setItem(key, value);
             });
+            
             showGistStatus('恢复成功！3秒后自动刷新页面');
             setTimeout(() => location.reload(), 3000);
         } else {

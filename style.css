@@ -1,5 +1,5 @@
 :root {
-    --primary-color: #f16c6c;
+    --primary-color: #505050;
     --background-color: #ffffff;
     --text-color: #333;
     --message-bg-user: #d1ffbed8;
@@ -8,6 +8,10 @@
     --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
+    --primary-btn-color: rgba(241, 241, 255, 0.99);
+    --primary-btn-text: rgb(116, 118, 255);
+    --btn-color: #f5f5f5;
+    --btn-border-color: #c0c0c0;
 }
 
 /* 你原来的 body 样式全部删掉或注释就行 */
@@ -45,7 +49,7 @@ body {
 /* 这两部分的样式保持不变，确保文字垂直居中 */
 .app-header h1 {
     margin: 0;
-    font-size: 1.2em;
+    font-size: 1.1em;
     color: var(--primary-color);
 }
 
@@ -107,21 +111,20 @@ body {
     border: 1px solid #ccc;
     border-radius: 8px;
     font-size: 1em;
-    background: rgba(255, 255, 255, 0.6) !important;   /* 重点！ */
+    background: rgba(255, 255, 255, 0.6) !important;
 }
 
 #task-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
     background: rgba(255, 255, 255, 0.88) !important;
 }
 
 #send-button {
     padding: 5px 12px;
-    border: none;
-    background-color: var(--primary-color);
-    color: white;
+    border:1px solid rgba(127, 127, 127, 0.816);
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
     border-radius: 8px;
     font-size: 1em;
     cursor: pointer;
@@ -129,7 +132,7 @@ body {
 }
 
 #reroll-footer-btn {
-    padding: 5px 9px;
+    padding: 5px 12px;
     border:1px solid rgba(127, 127, 127, 0.816);
     cursor: pointer;
     border-radius: 8px;
@@ -325,46 +328,6 @@ body {
 /* 重复的 */
 
 
-
-#task-input {
-    flex-grow: 1;
-    padding: 5px 16px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 1em;
-    background: rgba(255, 255, 255, 0.6) !important;
-}
-
-#task-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
-    background: rgba(255, 255, 255, 0.88) !important;
-}
-
-#send-button {
-    padding: 5px 12px;
-    border: none;
-    background-color: var(--primary-color);
-    color: white;
-    border-radius: 8px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-#reroll-footer-btn {
-    padding: 5px 9px;
-    border:1px solid rgba(127, 127, 127, 0.816);
-    cursor: pointer;
-    border-radius: 8px;
-    font-size: 1em;
-    flex-shrink: 0;
-    transition: background-color 0.2s;
-    background: rgba(251, 251, 251, 0.5);
-    color: rgb(131, 131, 131);
-}
-
 @keyframes slideInUp {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -415,7 +378,7 @@ body {
     background: none;
     border: none;
     font-size: 24px;
-    color: var(--primary-color); /* 用你的主题色 */
+    color: var(--primary-btn-color); /* 用你的主题色 */
     cursor: pointer;
     padding: 0 10px;
     height: 100%; /* 增加点击区域 */
@@ -474,7 +437,7 @@ body {
     /* --- 定位保持不变 --- */
     position: absolute;
     top: 50%;
-    right: 16px;
+    left: 16px;
     transform: translateY(-50%);
     
     /* --- 1. 核心修复：强制盒子模型 --- */
@@ -671,35 +634,39 @@ body {
 
 /* 按钮本身的样式保持不变 */
 .modal-buttons button {
-    padding: 7px 66px;
+    padding: 9px 50px;
+    gap: 20px;
     border-radius: 8px;
-    border: none;
-    font-size: 12px;
+    font-size: 15px;
+    border: 0.5px solid #9b9b9b; 
     cursor: pointer;
 }
 
-#main-cancel { background: #d0d0d0; color: #666; }
-#main-confirm { background: var(--primary-color); color: white; }
-#modal-cancel { background: #d0d0d0; color: #666; }
-#modal-save { background: var(--primary-color); color: white; }
+#main-cancel { background: var(--btn-color); color: #666; }
+#main-confirm {background: var(--primary-btn-color); color: var(--primary-btn-text); border:0.7px solid var(--primary-btn-text);}
+
+#modal-cancel { background: var(--btn-color); color: #666; }
+#modal-save { background: var(--primary-btn-color); color: var(--primary-btn-text); border: 0.7px solid var(--primary-btn-text);}
 
 .modal-danger-zone {
     margin-top: 25px;
     padding-top: 15px;
-    border-top: 1px dashed #ddd;
-    display: flex; flex-direction: column; gap: 8px;
+    border-top: 1px dashed var(--btn-border-color);
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px;
 }
 .danger-btn {
-    background: #ffc8c8; color: #d93025; border: none;
+    background: #ff3a3a; color: #ffffff; border: 1px solid rgb(255, 0, 0);
     padding: 5px; border-radius: 8px; font-size: 13px; cursor: pointer; width: 100%;
 }
-.danger-btn.outline { background: transparent; border: 1px solid #ff8d8d; }
+.danger-btn.outline {background: #ffffff; color: #ff0b0b; border: 1px solid rgb(255, 0, 0); }
 
 /* ============= 新增样式：头像上传预览 ============= */
 .avatar-upload-group .avatar-preview-wrapper {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 25px;
     margin-bottom: 8px;
 }
 
@@ -733,11 +700,11 @@ body {
 }
 
 .small-btn {
-    padding: 6px 10px;
+    padding: 10px 62px;
     font-size: 12px;
-    background: #ededed;
+    background: #ffffff;
     color: rgb(82, 82, 82);
-    border: 1px solid rgba(100, 100, 100, 0.6);
+    border: 1px solid var(--btn-border-color);
     border-radius: 8px;
     cursor: pointer;
 }
@@ -817,7 +784,6 @@ body {
     transition: all 0.2s ease;
     font-size: 15px;
     color: #444;
-    border: 1px solid rgba(0,0,0,0.08);
 }
 
 .main-option input[type="radio"] {
@@ -828,12 +794,12 @@ body {
 }
 
 .wallpaper-option.upload {
-    border: 1.5px dashed rgba(62, 62, 62, 0.707);
+    border: 1px solid var(--primary-btn-text);
     justify-content: center;
-    color: #7d7d7d;
+    color: var(--primary-btn-text);;
     font-weight: 500;
     position: relative;
-    background: rgb(255, 255, 255);
+    background: var(--primary-btn-color);
     padding: 10px;
     border-radius: 10px;
 }
@@ -868,15 +834,6 @@ body {
     box-shadow: 0 8px 8px rgba(0,0,0,0.2);
 }
 
-/* 按钮统一美化（你原项目肯定已经有，这里补全） */
-.modal-buttons button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
 
 /* 导入导出 */
 /* 隐藏原生的文件输入框，但保持可点击 */
@@ -998,19 +955,19 @@ body {
 
 /* 按钮样式 */
 #fetch-models-btn.fetch-models-btn {
-    padding: 10px 20px;
+    padding: 10px 35px;
+    border: 0.7px solid var(--primary-btn-text);
     border-radius: 8px;
-    border: none;
     font-size: 14px;
     cursor: pointer;
-    background: var(--primary-color);
-    color: white;
+    background: var(--primary-btn-color);
+    color: var(--primary-btn-text);
     flex-shrink: 0; /* 防止按钮在空间不足时被压缩 */
     transition: background-color 0.2s ease;
 }
 
 #fetch-models-btn.fetch-models-btn:hover {
-    background: #d9535b;
+    background: #b1b1b1;
 }
 
 
@@ -1108,24 +1065,24 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: #f1f1f1;
+    background: var(--btn-color);
     color: #333;
-    border: 1px solid #ddd;
+    border: 0.7px solid var(--btn-border-color);
 }
 
 .gist-btn:hover {
-    background: #d2d2d2;
+    background: rgb(231, 231, 231);
 }
 
-/* 主按钮（创建并备份）红色风格，和你原来的 primary 一致 */
+/* 主按钮（创建并备份）和你原来的 primary 一致 */
 .gist-btn.primary {
-    background: var(--primary-color);   /* 你原来是 #dc3545 之类的大红 */
-    color: white;
-    border: none;
+    background: var(--primary-btn-color);
+    border: 1px solid var(--primary-btn-text) !important;
+    color: var(--primary-btn-text);
 }
 
 .gist-btn.primary:hover {
-    background: rgb(220, 98, 98);
+    background: rgb(157, 157, 157);
 }
 
 /* 状态提示区 */
