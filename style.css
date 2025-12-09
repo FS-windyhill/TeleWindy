@@ -1,7 +1,7 @@
 :root {
     --primary-color: #505050;
     --background-color: #ffffff;
-    --text-color: #333;
+    --text-color: #ffffff;
     --message-bg-user: #d1ffbed8;
     --message-bg-ai: rgba(50, 50, 50, 0.8);
     --message-border-user: #b3c5a3;
@@ -41,7 +41,7 @@ body {
     border-bottom: 1px solid rgba(220,220,220,0.9);
     text-align: center;
     flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
 }
@@ -1140,6 +1140,7 @@ button#gist-find{
 /* 成功/错误状态（可选，你 JS 里可以加 class） */
 .gist-status.success { color: #28a745; }
 .gist-status.error   { color: #dc3545; }
+
 
 
 
