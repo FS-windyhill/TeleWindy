@@ -12,15 +12,6 @@
 // 1. CONFIG & STATE (配置与状态)
 // =========================================
 
-/*// --- 配置区 ---
-const API_URL = 'https://api.siliconflow.cn/v1/chat/completions  https://geminipolling-gv1p.onrender.com/v1/chat/completions';
-const MODEL = "zai-org/GLM-4.6"; 
-
-const API_KEYS = [
-    'sk-zjrwnikmirbgzteakyyrqtlwmkglwpapqcgpmgjbyupxhwzd', 
-    */
-
-    
 const CONFIG = {
     STORAGE_KEY: 'teleWindy_char_data_v1',
     OLD_STORAGE_KEY: 'octopus_coach_chat_history', // 兼容旧版
@@ -63,11 +54,9 @@ const Storage = {
         let loadedSettings = settingsRaw ? JSON.parse(settingsRaw) : {};
 
         // === 关键修复：合并默认值和加载值 ===
-        // 用默认值打底，然后用加载的设置覆盖上去。
-        // 这样既保留了用户的旧设置，又能补充上代码里新增的默认字段！
         STATE.settings = { ...CONFIG.DEFAULT, ...loadedSettings };
 
-        // 兼容旧的散装存储 (这段逻辑可以保持，虽然可能不再需要)
+        // 兼容旧的散装存储
         if (!settingsRaw) {
             const oldUserAvatar = localStorage.getItem('fs_user_avatar');
             const oldWallpaper = localStorage.getItem('fs_wallpaper');
@@ -75,7 +64,7 @@ const Storage = {
             if (oldWallpaper) STATE.settings.WALLPAPER = oldWallpaper;
         }
 
-        // 2. 加载联系人 (后面部分保持不变)
+        // 2. 加载联系人
         const contactsRaw = localStorage.getItem(CONFIG.STORAGE_KEY);
         if (contactsRaw) {
             STATE.contacts = JSON.parse(contactsRaw);
@@ -188,9 +177,9 @@ const API = {
         // ==========================================================
         console.log(`👇👇👇 === [${provider.toUpperCase()}] 真实发送给 AI 的请求体 (Raw Body) === 👇👇👇`);
         try {
-            console.log(JSON.parse(options.body)); // 解析后再打印，格式更美观
+            console.log(JSON.parse(options.body)); 
         } catch(e) {
-            console.log(options.body); // 如果解析失败直接打印字符串
+            console.log(options.body); 
         }
         console.log('👆👆👆 ========================================================== 👆👆👆');
 
@@ -210,8 +199,6 @@ const API = {
     }
 };
 
-
-
 // =========================================
 // 4. UI RENDERER (DOM 操作)
 // =========================================
@@ -228,14 +215,13 @@ const UI = {
         sendBtn: document.getElementById('send-button'),
         rerollBtn: document.getElementById('reroll-footer-btn'),
         modalOverlay: document.getElementById('modal-overlay'),
-        mainModal: document.getElementById('main-modal'), // 设置弹窗
+        mainModal: document.getElementById('main-modal'), 
         
         // Settings Inputs
         settingUrl: document.getElementById('custom-api-url'),
         settingKey: document.getElementById('custom-api-key'),
         settingModel: document.getElementById('custom-model-select'),
         fetchBtn: document.getElementById('fetch-models-btn')
-
     },
 
     init() {
@@ -304,7 +290,6 @@ const UI = {
             const sender = msg.role === 'assistant' ? 'ai' : 'user';
 
             const cleanText = typeof msg === 'string' ? msg : msg.content || '';
-            // 获取该条消息的时间戳，如果没有则用 undefined (appendMessageBubble 会自动生成当前时间)
             const msgTime = typeof msg === 'string' ? null : msg.timestamp;
             
             // 分段渲染逻辑
@@ -320,37 +305,26 @@ const UI = {
         this.updateRerollState(contact);
     },
 
-    // ★★★ 新增：精准移除底部的 AI 气泡，不重绘整个页面
     removeLatestAiBubbles() {
         const container = this.els.chatMsgs;
-        // 循环检查：只要最后一个元素是 AI 发的，就把它移除
-        // 这样可以同时处理掉 AI 分段发出的多个气泡，直到遇到用户发的气泡为止
         while (container.lastElementChild && container.lastElementChild.classList.contains('ai')) {
             container.removeChild(container.lastElementChild);
         }
     },
 
-
     appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw) {
-        // 1. 获取 HTML 中的模板
         const template = document.getElementById('msg-template');
-        // 2. 克隆一份模板内容 (true 表示深度克隆，包含子元素)
         const clone = template.content.cloneNode(true);
         
-        // 3. 获取克隆出来的各个节点
         const wrapper = clone.querySelector('.message-wrapper');
         const bubble = clone.querySelector('.message-bubble');
         const timeSpan = clone.querySelector('.msg-time');
         const avatarImg = clone.querySelector('.avatar-img');
         const avatarText = clone.querySelector('.avatar-text');
 
-        // 4. 设置类名 (ai 或 user) -> 这决定了 CSS 里的左右布局
         wrapper.classList.add(sender);
-
-        // 5. 填充文本内容
         bubble.innerText = text;
 
-        // 6. 处理时间戳
         let timeStr = "";
         if (timestampRaw && timestampRaw.includes(' ')) {
             timeStr = timestampRaw.split(' ')[1]; 
@@ -360,7 +334,6 @@ const UI = {
         }
         timeSpan.innerText = timeStr;
 
-        // 7. 处理头像 (逻辑：如果是 URL 用 img，如果是 Emoji 用 div)
         let currentAvatar = '';
         if (sender === 'user') {
             currentAvatar = STATE.settings.USER_AVATAR || 'user.jpg';
@@ -368,21 +341,18 @@ const UI = {
             currentAvatar = aiAvatarUrl || '🌸';
         }
 
-        // 判断是否为图片 URL (简单的判断：以 http 开头或 data:image 开头)
         const isImage = currentAvatar.startsWith('http') || currentAvatar.startsWith('data:');
 
         if (isImage) {
             avatarImg.src = currentAvatar;
-            // 如果加载失败，显示默认
             avatarImg.onerror = () => { avatarImg.style.display='none'; avatarText.style.display='flex'; avatarText.innerText='?'; };
             avatarText.style.display = 'none';
         } else {
             avatarImg.style.display = 'none';
-            avatarText.style.display = 'flex'; // Flex 用于居中 emoji
+            avatarText.style.display = 'flex'; 
             avatarText.innerText = currentAvatar;
         }
 
-        // 8. 将组装好的 DOM 插入页面
         this.els.chatMsgs.appendChild(clone);
         this.scrollToBottom();
     },
@@ -409,17 +379,14 @@ const UI = {
         this.els.rerollBtn.disabled = !hasHistory;
     },
 
-    // 瀑布流打字机效果
     async playWaterfall(fullText, avatar, timestamp) {
         const paragraphs = fullText.split(/\n\s*\n/).filter(p => p.trim());
         for (let i = 0; i < paragraphs.length; i++) {
             if (i > 0) await new Promise(r => setTimeout(r, 400));
-            // 传入时间戳
             this.appendMessageBubble(paragraphs[i], 'ai', avatar, timestamp);
         }
     }
 };
-
 // =========================================
 // 5. APP CONTROLLER (核心逻辑与事件)
 // =========================================
@@ -442,7 +409,6 @@ const App = {
         const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
         if (!contact) return;
         
-        // 检查配置
         const { API_URL, API_KEY, MODEL } = STATE.settings;
         if (!API_URL || !API_KEY || !MODEL) {
             alert('请先点击右上角的设置按钮，配置 API 地址、密钥和模型！');
@@ -450,49 +416,57 @@ const App = {
         }
 
         let userText = UI.els.input.value.trim();
-        const timestamp = formatTimestamp();   // ← 新增：生成当前时间戳
+        const timestamp = formatTimestamp();
 
         // 1. 处理消息历史
         const sysMsg = { role: 'system', content: contact.prompt };
-        // 确保 System Prompt 始终在第一位
         if (contact.history.length === 0 || contact.history[0].role !== 'system') {
             contact.history.unshift(sysMsg);
         } else {
-            contact.history[0] = sysMsg; // 更新 Prompt
+            contact.history[0] = sysMsg; 
         }
 
         if (isReroll) {
-            // Reroll 逻辑：找到上一条用户消息
             const lastUserMsg = [...contact.history].reverse().find(m => m.role === 'user');
             if (!lastUserMsg) return;
             userText = lastUserMsg.content;
             
-            // 1. 数据层清理：移除内存中最后的 assistant 消息
             while(contact.history.length > 0 && contact.history[contact.history.length-1].role === 'assistant') {
                 contact.history.pop();
             }
 
-            // 2. 界面层清理：只移除底部的 AI 气泡，保持上方历史不动
-            // ★★★ 这里改成了调用新方法，而不是 renderChatHistory
             UI.removeLatestAiBubbles(); 
             
         } else {
             // 正常发送
             if (!userText) return;
-            // 用户消息带上时间戳
-            const taggedUserText = `[${timestamp}] ${userText}`;
+            
+            // UI上拆分显示气泡
+            const paragraphs = userText.split(/\n\s*\n/).filter(p => p.trim());
+            if (paragraphs.length > 0) {
+                paragraphs.forEach(p => UI.appendMessageBubble(p.trim(), 'user', null, timestamp));
+            } else {
+                UI.appendMessageBubble(userText, 'user', null, timestamp);
+            }
 
-            // ★修改点1：调用 appendMessageBubble 时传入 timestamp
-            UI.appendMessageBubble(userText, 'user', null, timestamp); 
-
-            // 存成对象，content 保持纯净
+            // 数据层：存完整的
             contact.history.push({ 
                 role: 'user', 
-                content: userText,           // 纯文字，界面用这个
-                timestamp: timestamp         // 时间戳单独存
+                content: userText,
+                timestamp: timestamp 
             });
-            UI.els.input.value = '';
-            UI.els.input.blur();
+            
+            // === 发送后清理 ===
+            UI.els.input.value = '';            // 清空内容
+            UI.els.input.style.height = '38px'; // ★★★ 强制回弹高度 ★★★
+            
+            // 移动端发送后通常希望收起键盘看消息，PC端通常希望保持焦点
+            const isMobile = window.innerWidth < 800;
+            if (isMobile) {
+                UI.els.input.blur();
+            } else {
+                UI.els.input.focus(); 
+            }
         }        
 
         Storage.saveContacts();
@@ -503,31 +477,18 @@ const App = {
             .filter(m => m.role !== 'system')
             .slice(-30)
             .map(msg => {
-                // 兼容旧数据
                 let content = msg.content || msg;
-                
-                // ★★★ 核心修改在这里 ★★★
-                // 只有当角色是 'user' 时，才把时间戳拼进去
-                // 这样 AI 看到自己以前的回复里没有时间戳，它就不会模仿了
                 if (msg.role === 'user') {
-                    // 获取该消息的时间，如果没有存则用当前时间
                     let time = msg.timestamp || formatTimestamp(); 
-                    return {
-                        role: 'user',
-                        content: `[${time}] ${content}` 
-                    };
+                    return { role: 'user', content: `[${time}] ${content}` };
                 } else {
-                    // 如果是 assistant (AI)，直接发送纯文本，不要带时间戳
-                    return {
-                        role: 'assistant',
-                        content: content 
-                    };
+                    return { role: 'assistant', content: content };
                 }
             });
         
         const messagesToSend = [
-            { role: 'system', content: CONFIG.SYSTEM_PROMPT }, // 全局设定
-            { role: 'system', content: `=== 角色设定 ===\n${contact.prompt}` }, // 角色设定
+            { role: 'system', content: CONFIG.SYSTEM_PROMPT }, 
+            { role: 'system', content: `=== 角色设定 ===\n${contact.prompt}` },
             ...recentHistory
         ];
 
@@ -535,17 +496,14 @@ const App = {
             const aiText = await API.chat(messagesToSend, STATE.settings);
            
             const aiTimestamp = formatTimestamp();
-            const taggedAiText = `[${timestamp}] ${aiText}`;
-
             contact.history.push({ 
                 role: 'assistant', 
-                content: aiText,             // 纯文字
-                timestamp: aiTimestamp       // 时间戳单独存
+                content: aiText,
+                timestamp: aiTimestamp
             });
             Storage.saveContacts();
             
             UI.setLoading(false);
-            // ★修改点2：调用 playWaterfall 时传入 aiTimestamp
             await UI.playWaterfall(aiText, contact.avatar, aiTimestamp)
 
         } catch (error) {
@@ -554,28 +512,20 @@ const App = {
             UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar);
         } finally {
             UI.updateRerollState(contact);
-            UI.els.input.focus();
+            // 如果是 PC，发送完 AI 回复后再次聚焦输入框
+            if (window.innerWidth >= 800) UI.els.input.focus();
         }
     },
 
-    // --- 设置相关的逻辑 ---
+    // --- 设置相关的逻辑 (保持不变) ---
     openSettings() {
         UI.els.mainModal.classList.remove('hidden');
-        // 回显数据
         const s = STATE.settings;
         UI.els.settingUrl.value = s.API_URL || '';
         UI.els.settingKey.value = s.API_KEY || '';
         UI.els.settingModel.value = STATE.settings.MODEL || 'zai-org/GLM-4.6';
-        // 打开设置弹窗时（你原来的代码基础上加这一行）
         document.getElementById('gist-token').value = STATE.settings.GIST_TOKEN || '';
-        
-        // 回显模型 (需要特殊处理，因为 Select 选项可能还没加载)
-        // 简单的做法：先放一个当前选中的 option
-        if (s.MODEL) {
-            UI.els.settingModel.innerHTML = `<option value="${s.MODEL}">${s.MODEL}</option>`;
-        }
-        
-        // 预览壁纸
+        if (s.MODEL) UI.els.settingModel.innerHTML = `<option value="${s.MODEL}">${s.MODEL}</option>`;
         const previewImg = document.getElementById('wallpaper-preview-img');
         if (s.WALLPAPER && s.WALLPAPER.startsWith('data:')) {
             previewImg.src = s.WALLPAPER;
@@ -587,39 +537,30 @@ const App = {
         const url = UI.els.settingUrl.value.trim();
         const key = UI.els.settingKey.value.trim();
         if(!url || !key) return alert('请先填写地址和密钥');
-
         const btn = UI.els.fetchBtn;
         btn.textContent = '获取中...';
         btn.disabled = true;
-
         try {
             const data = await API.fetchModels(url, key);
-            
-            // 注意：这里改成了操作 datalist
             const datalist = document.getElementById('model-options');
-            datalist.innerHTML = ''; // 清空旧选项
-            
+            datalist.innerHTML = '';
             if (data.data && Array.isArray(data.data)) {
                 data.data.forEach(m => {
                     const opt = document.createElement('option');
-                    opt.value = m.id; // datalist 的 option 是不需要闭合标签内容的
+                    opt.value = m.id;
                     datalist.appendChild(opt);
                 });
-                
-                // 拉取成功后，自动填入第一个模型到输入框，方便用户
                 if (data.data.length > 0) {
                     UI.els.settingModel.value = data.data[0].id;
-                    // 同时也更新一下 settings 状态
                     STATE.settings.MODEL = data.data[0].id; 
                 }
-                
-                alert(`成功拉取 ${data.data.length} 个模型！\n点击输入框右侧的小箭头即可选择。`);
+                alert(`成功拉取 ${data.data.length} 个模型！`);
             } else {
-                alert('连接成功，但对方没有返回有效的模型列表。\n请直接在输入框里手动填写模型名称。');
+                alert('连接成功，但对方没有返回有效的模型列表。');
             }
         } catch (e) {
             console.error(e);
-            alert('拉取失败（可能是CORS跨域限制或API不支持列表查询）。\n\n别担心！你可以直接在输入框里手动输入模型名（例如 gemini-1.5-flash）并保存。');
+            alert('拉取失败，请手动输入模型名。');
         } finally {
             btn.textContent = '拉取模型';
             btn.disabled = false;
@@ -627,87 +568,75 @@ const App = {
     },
 
     saveSettingsFromUI() {
-        // 1. 获取用户输入并去除首尾空格
-        let rawUrl = UI.els.settingUrl.value.trim();
-        
-        // 2. 去除末尾的斜杠 (防止拼接出 //v1 这种丑陋的链接)
-        rawUrl = rawUrl.replace(/\/+$/, '');
-
-        // 3. 智能补全逻辑
-        // 如果不是 Claude 或 Gemini (这俩有特殊的地址规则)，则默认按 OpenAI 格式补全
+        let rawUrl = UI.els.settingUrl.value.trim().replace(/\/+$/, '');
         if (!rawUrl.includes('anthropic') && !rawUrl.includes('googleapis')) {
-            
-            // 情况 A: 用户不小心写成了单数 /completion (帮你自动修)
-            if (rawUrl.endsWith('/chat/completion')) {
-                rawUrl += 's'; 
-            }
-            // 情况 B: 用户完全没写路径，只写了域名或 /v1
+            if (rawUrl.endsWith('/chat/completion')) rawUrl += 's'; 
             else if (!rawUrl.includes('/chat/completions')) {
-                if (rawUrl.endsWith('/v1')) {
-                    // 用户写了 https://api.xxx.com/v1 -> 补上 /chat/completions
-                    rawUrl += '/chat/completions';
-                } else {
-                    // 用户只写了 https://api.xxx.com -> 补上 /v1/chat/completions
-                    rawUrl += '/v1/chat/completions';
-                }
+                rawUrl += rawUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions';
             }
         }
-
-        // 将修正后的 URL 写回输入框，让用户也能看到（可选，这样用户知道发生了什么）
         UI.els.settingUrl.value = rawUrl;
-
-        // --- 保存逻辑 ---
         STATE.settings.API_URL = rawUrl;
         STATE.settings.API_KEY = UI.els.settingKey.value.trim();
         STATE.settings.MODEL = UI.els.settingModel.value;
+        STATE.settings.GIST_TOKEN = document.getElementById('gist-token').value.trim() || ''; 
 
-        // 新增：保存 GitHub Gist Token
-        const gistToken = document.getElementById('gist-token').value.trim();
-        // ← 你的输入框 ID
-        STATE.settings.GIST_TOKEN = gistToken || '';  // 空字符串也保存，方便判断是否配置过
-
-        
-
-        // 壁纸处理逻辑 (保持不变)
         const wallpaperPreview = document.getElementById('wallpaper-preview-img').src;
         if(wallpaperPreview && wallpaperPreview.startsWith('data:')) {
             STATE.settings.WALLPAPER = wallpaperPreview;
         } else if (!STATE.settings.WALLPAPER) {
             STATE.settings.WALLPAPER = 'wallpaper.jpg';
         }
-
         Storage.saveSettings();
         UI.applyTheme(); 
         UI.els.mainModal.classList.add('hidden');
-        
-        // 给个提示
         alert(`设置已保存！\nAPI 地址已自动规范化为：\n${rawUrl}`);
     },
 
-    // --- 文件读取辅助 ---
     readFile(file) {
-        return new Promise((resolve, reject) => {
+        return new Promise((r, j) => {
             const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = reject;
+            reader.onload = e => r(e.target.result);
+            reader.onerror = j;
             reader.readAsDataURL(file);
         });
     },
 
     bindEvents() {
-        // 1. 聊天输入
+        // === 1. 初始化输入框样式 ===
+        UI.els.input.style.overflowY = 'hidden'; 
+        UI.els.input.style.resize = 'none';      
+        UI.els.input.style.height = '44px';      
+
+        // === 2. 监听输入，实现自动增高 ===
+        UI.els.input.addEventListener('input', function() {
+            this.style.height = 'auto'; 
+            this.style.height = (this.scrollHeight) + 'px';
+            if (this.value === '') this.style.height = '44px';
+        });
+
+        // === 3. 聊天发送逻辑 ===
         UI.els.sendBtn.onclick = () => this.handleSend(false);
-        UI.els.input.onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();App.handleSend(false)}};
+        
+        UI.els.input.onkeydown = (e) => {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
+            // PC端：Enter 发送，Shift+Enter 换行
+            // 移动端：Enter 换行 (默认)，点击按钮发送
+            if (e.key === "Enter" && !e.shiftKey && !isMobile) {
+                e.preventDefault(); 
+                App.handleSend(false);
+            }
+        };
+
         UI.els.rerollBtn.onclick = () => this.handleSend(true);
         document.getElementById('back-btn').onclick = () => UI.switchView('list');
 
-        // 2. 主页设置 (API + 壁纸)
+        // === 4. 设置与弹窗逻辑 ===
         document.getElementById('main-settings-btn').onclick = () => this.openSettings();
         document.getElementById('main-cancel').onclick = () => UI.els.mainModal.classList.add('hidden');
         document.getElementById('main-confirm').onclick = () => this.saveSettingsFromUI();
         UI.els.fetchBtn.onclick = () => this.fetchModelsForUI();
 
-        // 3. 壁纸预览
         document.getElementById('wallpaper-file-input').onchange = async (e) => {
             if(e.target.files[0]) {
                 const base64 = await this.readFile(e.target.files[0]);
@@ -716,20 +645,12 @@ const App = {
             }
         };
 
-        // 4. 角色编辑弹窗 (复用你原来的逻辑，这里简化绑定)
         const modal = document.getElementById('modal-overlay');
         document.getElementById('add-contact-btn').onclick = () => this.openEditModal(null);
         document.getElementById('chat-settings-btn').onclick = () => this.openEditModal(STATE.currentContactId);
         document.getElementById('modal-cancel').onclick = () => modal.classList.add('hidden');
+        document.getElementById('modal-save').onclick = () => { this.saveContactFromModal(); modal.classList.add('hidden'); };
         
-        document.getElementById('modal-save').onclick = () => {
-            this.saveContactFromModal();
-            modal.classList.add('hidden');
-        };
-        
-        // ... (删除/清空历史的按钮绑定类似，为节省篇幅略过，逻辑与你原代码一致，只需调用 Storage.saveContacts 和 UI.renderContacts)
-        
-        // 绑定删除和清空
         document.getElementById('modal-delete').onclick = () => {
              if (confirm('删除角色？')) {
                  STATE.contacts = STATE.contacts.filter(c => c.id !== this.editingId);
@@ -739,7 +660,6 @@ const App = {
                  else UI.renderContacts();
              }
         };
-        
         document.getElementById('modal-clear-history').onclick = () => {
             if(confirm('清空聊天记录？')) {
                 const c = STATE.contacts.find(x => x.id === this.editingId);
@@ -749,19 +669,15 @@ const App = {
             }
         };
 
-        // 绑定头像上传预览
-        this.bindImageUpload('edit-avatar-file', 'edit-avatar-preview', 'edit-avatar'); // 角色头像
+        this.bindImageUpload('edit-avatar-file', 'edit-avatar-preview', 'edit-avatar'); 
         this.bindImageUpload('user-avatar-file', 'user-avatar-preview', null, (base64) => {
             STATE.settings.USER_AVATAR = base64;
             Storage.saveSettings();
-            // 如果正在聊天，刷新一下界面以显示新头像
             if(STATE.currentContactId) {
                 const c = STATE.contacts.find(x => x.id === STATE.currentContactId);
                 if(c) UI.renderChatHistory(c);
             }
         });
-        
-        // 绑定按钮点击触发 input file
         document.getElementById('edit-avatar-upload-btn').onclick = () => document.getElementById('edit-avatar-file').click();
         document.getElementById('user-avatar-upload-btn').onclick = () => document.getElementById('user-avatar-file').click();
     },
@@ -783,15 +699,12 @@ const App = {
         this.editingId = id;
         const modal = document.getElementById('modal-overlay');
         modal.classList.remove('hidden');
-        
         const title = document.getElementById('modal-title');
         const iName = document.getElementById('edit-name');
         const iAvatar = document.getElementById('edit-avatar');
         const iPrompt = document.getElementById('edit-prompt');
         const preview = document.getElementById('edit-avatar-preview');
         const userPreview = document.getElementById('user-avatar-preview');
-        
-        // 设置用户头像预览
         userPreview.src = STATE.settings.USER_AVATAR || 'user.jpg';
 
         if (id) {
@@ -801,7 +714,6 @@ const App = {
             iAvatar.value = c.avatar;
             iPrompt.value = c.prompt;
             preview.src = (c.avatar.startsWith('data:') || c.avatar.startsWith('http')) ? c.avatar : '';
-            
             document.getElementById('modal-delete').style.display = 'block';
             document.getElementById('modal-clear-history').style.display = 'block';
         } else {
@@ -819,43 +731,31 @@ const App = {
         const name = document.getElementById('edit-name').value.trim() || '未命名';
         let avatar = document.getElementById('edit-avatar').value.trim();
         const prompt = document.getElementById('edit-prompt').value.trim();
-        
-        // 优先使用预览图 src (如果是 base64)
         const previewSrc = document.getElementById('edit-avatar-preview').src;
         if(previewSrc.startsWith('data:')) avatar = previewSrc;
 
         if (this.editingId) {
             const c = STATE.contacts.find(x => x.id === this.editingId);
-            if (c) {
-                c.name = name;
-                c.avatar = avatar;
-                c.prompt = prompt;
-            }
+            if (c) { c.name = name; c.avatar = avatar; c.prompt = prompt; }
         } else {
-            STATE.contacts.push({
-                id: Date.now().toString(),
-                name, avatar, prompt, history: []
-            });
+            STATE.contacts.push({ id: Date.now().toString(), name, avatar, prompt, history: [] });
         }
         Storage.saveContacts();
         UI.renderContacts();
-        
-        // 如果正在编辑当前聊天的角色，刷新标题
         if (STATE.currentContactId === this.editingId) {
             document.getElementById('chat-title').innerText = name;
-            // 刷新当前聊天记录以更新头像
             const c = STATE.contacts.find(x => x.id === this.editingId);
             UI.renderChatHistory(c);
         }
     }
 };
 
+
 // =========================================
 // 6. BOOTSTRAP (启动)
 // =========================================
 window.onload = () => App.init();
 
-// 全局导出，方便 HTML onclick (如导出按钮)
 window.exportData = () => {
     const data = JSON.stringify(localStorage, null, 2);
     const blob = new Blob([data], {type: 'application/json'});
@@ -863,16 +763,14 @@ window.exportData = () => {
     const a = document.createElement('a');
     a.href = url;
 
-    // —— 这里是改好的时间戳 ——
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_` +
                       `${pad(now.getHours())}`;
     a.download = `TeleWindy-Backup-${timestamp}.json`;
-    // ————————————————
 
     a.click();
-    URL.revokeObjectURL(url); // 顺手清理一下内存
+    URL.revokeObjectURL(url); 
 };
 
 window.importData = (input) => {
@@ -889,15 +787,12 @@ window.importData = (input) => {
         } catch(err) { alert('文件格式错误'); }
     };
     reader.readAsText(input.files[0]);
-
 };
-
 
 // =========================================
 // 新增各种小工具
 // =========================================
 
-// 时间感知
 function formatTimestamp() {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -908,55 +803,42 @@ function formatTimestamp() {
     const minute = now.getMinutes().toString().padStart(2, '0');
     return `${month}.${day} ${hour}:${minute}`;
 }
-// 示例输出：Nov.29 15:09
 
 
 // ==================== GitHub Gist 同步功能 (升级版) ====================
-const gistTokenInput = document.getElementById('gist-token'); // 假设你页面上还是有这个，用来保存token到STATE
-const gistIdInput    = document.getElementById('gist-id-input'); // 新增：Gist ID 输入框
+const gistTokenInput = document.getElementById('gist-token'); 
+const gistIdInput    = document.getElementById('gist-id-input'); 
 const gistStatusDiv  = document.getElementById('gist-status');
 
-// 全局变量，用于存储当前会话的 Gist ID
 let currentGistId = localStorage.getItem('telewindy-gist-id') || null;
 
-// ======================= 新增/修改的核心逻辑 =======================
-
-// 页面加载时，如果本地有ID，就自动填入输入框
 if (currentGistId) {
     gistIdInput.value = currentGistId;
     showGistStatus(`已从本地加载备份 ID: ${currentGistId.slice(0, 8)}...`, false);
 }
 
-// 工具：更新 Gist ID（无论是手动输入还是自动找到）
 function updateGistId(newId) {
     if (newId && typeof newId === 'string' && newId.trim() !== '') {
         currentGistId = newId.trim();
-        gistIdInput.value = currentGistId; // 同步到输入框
-        localStorage.setItem('telewindy-gist-id', currentGistId); // 保存到本地
+        gistIdInput.value = currentGistId; 
+        localStorage.setItem('telewindy-gist-id', currentGistId); 
         return true;
     }
     return false;
 }
 
-// 监听 Gist ID 输入框的变化，允许用户手动粘贴 ID
 gistIdInput.addEventListener('change', () => {
     if (updateGistId(gistIdInput.value)) {
         showGistStatus('Gist ID 已手动更新。现在可以恢复了。');
     }
 });
 
-
-// ======================= 以下是原有的函数，稍作修改 =======================
-
-// 工具：显示状态 (无修改)
 function showGistStatus(msg, isError = false) {
     gistStatusDiv.textContent = msg;
     gistStatusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
 }
 
-// 工具：导出全部数据 (无修改)
 function exportAllData() {
-    // ... 你的代码完全不变 ...
     const data = {};
     const settingsKey = 'teleWindy_settings_v1'; 
     for (let i = 0; i < localStorage.length; i++) {
@@ -978,15 +860,12 @@ function exportAllData() {
     return data;
 }
 
-// 工具：导入全部数据 (无修改)
 function importAllData(data) {
-    // ... 你的代码完全不变 ...
     localStorage.clear();
     Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
 }
 
 
-// ============== 【新增】自动查找 Gist 的功能 ==============
 document.getElementById('gist-find').addEventListener('click', async () => {
     const token = STATE.settings.GIST_TOKEN;
     if (!token) return showGistStatus('请先在设置中填写并保存 Token', true);
@@ -994,7 +873,6 @@ document.getElementById('gist-find').addEventListener('click', async () => {
     showGistStatus('正在云端查找 TeleWindy 备份...');
 
     try {
-        // 1. 获取用户的所有 Gists
         const res = await fetch('https://api.github.com/gists', {
             headers: { Authorization: `token ${token}` }
         });
@@ -1003,14 +881,12 @@ document.getElementById('gist-find').addEventListener('click', async () => {
 
         const gists = await res.json();
         
-        // 2. 筛选出符合条件的 Gist
         const backupGist = gists.find(gist => 
             gist.description === "TeleWindy 聊天记录与配置自动备份" &&
             gist.files['telewindy-backup.json']
         );
 
         if (backupGist) {
-            // 3. 找到后，更新并保存 ID
             updateGistId(backupGist.id);
             showGistStatus(`查找成功！已自动填入备份 ID: ${backupGist.id.slice(0, 8)}...`);
         } else {
@@ -1023,7 +899,6 @@ document.getElementById('gist-find').addEventListener('click', async () => {
 });
 
 
-// 创建新 gist 并备份（修改：成功后调用 updateGistId）
 document.getElementById('gist-create-and-backup').addEventListener('click', async () => {
     const token = STATE.settings.GIST_TOKEN;
     if (!token) return showGistStatus('填写Token→点保存→再开始备份或恢复', true);
@@ -1031,7 +906,7 @@ document.getElementById('gist-create-and-backup').addEventListener('click', asyn
     showGistStatus('正在创建 gist 并备份...');
     const allData = exportAllData();
     const payload = {
-        description: "TeleWindy 聊天记录与配置自动备份", // 这个描述很重要，是自动查找的依据
+        description: "TeleWindy 聊天记录与配置自动备份", 
         public: false,
         files: { "telewindy-backup.json": { content: JSON.stringify({ backup_at: new Date().toISOString(), app: "TeleWindy", data: allData }, null, 2) } }
     };
@@ -1046,7 +921,6 @@ document.getElementById('gist-create-and-backup').addEventListener('click', asyn
         if (res.ok) {
             const json = await res.json();
             if (json && json.id) {
-                // === 关键修改：使用标准函数更新 ID ===
                 updateGistId(json.id);
                 showGistStatus(`创建及备份成功！Gist ID: ${json.id}`);
             } else {
@@ -1063,9 +937,8 @@ document.getElementById('gist-create-and-backup').addEventListener('click', asyn
 });
 
 
-// 仅备份（修改：不再只依赖全局变量，优先用输入框里的）
 document.getElementById('gist-backup').addEventListener('click', async () => {
-    const gistIdToUse = gistIdInput.value.trim(); // <<< 修改：直接从输入框获取ID
+    const gistIdToUse = gistIdInput.value.trim(); 
     if (!gistIdToUse) return showGistStatus('Gist ID 为空。请先创建、查找或手动输入。', true);
 
     const token = STATE.settings.GIST_TOKEN;
@@ -1076,7 +949,7 @@ document.getElementById('gist-backup').addEventListener('click', async () => {
     const payload = { files: { "telewindy-backup.json": { content: JSON.stringify({ backup_at: new Date().toISOString(), app: "TeleWindy", data: allData }, null, 2) } } };
 
     try {
-        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { // <<< 修改：使用从输入框获取的ID
+        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { 
             method: 'PATCH',
             headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -1086,8 +959,8 @@ document.getElementById('gist-backup').addEventListener('click', async () => {
             showGistStatus('备份更新成功！' + new Date().toLocaleTimeString());
         } else {
             if (res.status === 404) {
-                localStorage.removeItem('telewindy-gist-id'); // 清除无效 ID
-                gistIdInput.value = ''; // 清空输入框
+                localStorage.removeItem('telewindy-gist-id'); 
+                gistIdInput.value = ''; 
                 currentGistId = null;
                 showGistStatus('原备份 ID 失效（已自动清除），请重新「创建」或「查找」', true);
             } else {
@@ -1101,9 +974,8 @@ document.getElementById('gist-backup').addEventListener('click', async () => {
 });
 
 
-// 从云端恢复（修改：同上，优先用输入框里的）
 document.getElementById('gist-restore').addEventListener('click', async () => {
-    const gistIdToUse = gistIdInput.value.trim(); // <<< 修改：直接从输入框获取ID
+    const gistIdToUse = gistIdInput.value.trim(); 
     if (!gistIdToUse) return showGistStatus('Gist ID 为空。请先「查找」或「手动输入」。', true);
     
     const token = STATE.settings.GIST_TOKEN;
@@ -1112,7 +984,7 @@ document.getElementById('gist-restore').addEventListener('click', async () => {
     showGistStatus('正在从云端拉取数据...');
 
     try {
-        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { // <<< 修改：使用从输入框获取的ID
+        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { 
             headers: { Authorization: `token ${token}` }
         });
 
@@ -1126,7 +998,6 @@ document.getElementById('gist-restore').addEventListener('click', async () => {
             throw new Error(`Gist 获取失败 (${res.status})`);
         }
 
-        // ... 后面的恢复逻辑你的代码已经很完美了，完全不用改 ...
         const json = await res.json();
         const file = json.files['telewindy-backup.json'];
         if (!file) return showGistStatus('备份文件不存在', true);
@@ -1167,6 +1038,4 @@ document.getElementById('gist-restore').addEventListener('click', async () => {
         showGistStatus('恢复失败：' + e.message, true);
     }
 });
-
-
 

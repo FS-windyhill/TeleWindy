@@ -107,11 +107,29 @@ body {
 
 #task-input {
     flex-grow: 1;
-    padding: 5px 16px;
+    /* 调整内边距，使其文字垂直居中看起来像 input */
+    padding: 6px 16px; 
     border: 1px solid #ccc;
     border-radius: 8px;
-    font-size: 1em;
     background: rgba(255, 255, 255, 0.6) !important;
+
+    /* --- 解决问题 1: 去掉右下角下拉标 --- */
+    resize: none; 
+
+    /* --- 解决问题 2: 字体变小 --- */
+    /* textarea 默认不继承父元素字体，需强制继承 */
+    font-family: inherit; 
+    font-size: 1em; 
+    line-height: 1.5; /* 设置行高，让文字不拥挤 */
+
+    /* --- 解决问题 3: 默认高度太高 --- */
+    /* 设置一个初始高度，通常 40px-44px 比较像单行输入框 */
+    height: 38px; 
+    /* 隐藏超出的滚动条，配合 JS 实现自动增高 */
+    overflow-y: hidden; 
+    
+    /* 确保宽度计算包含 padding */
+    box-sizing: border-box; 
 }
 
 #task-input:focus {
