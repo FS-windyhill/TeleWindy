@@ -3,9 +3,9 @@
     --background-color: #ffffff;
     --text-color: #333;
     --message-bg-user: #d1ffbed8;
-    --message-bg-ai: #ffffffd0;
+    --message-bg-ai: rgba(50, 50, 50, 0.8);
     --message-border-user: #b3c5a3;
-    --message-border-ai: #e8e8e8;    
+    --message-border-ai: rgba(75, 75, 75, 1);    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
@@ -50,7 +50,7 @@ body {
 .app-header h1 {
     margin: 0;
     font-size: 1.1em;
-    color: var(--primary-color);
+    color: #ffffff;
 }
 
 .app-header p {
@@ -96,10 +96,10 @@ body {
     flex-shrink: 0;   /* 输入框永远贴底 */
     /* 你原来的毛玻璃样式也保留 */
     padding: 8px 16px;
-    border-top: 1px solid rgba(220,220,220,0.9);
+    border-top: 1px solid rgba(50,50,50,0.9);
     display: flex;
     gap: 9px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
     border-radius: 0;
@@ -109,9 +109,9 @@ body {
     flex-grow: 1;
     /* 调整内边距，使其文字垂直居中看起来像 input */
     padding: 6px 16px; 
-    border: 1px solid #ccc;
+    border: 1px solid rgba(50,50,50,0.9);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.6) !important;
+    background: rgba(0, 0, 0, 0.6) !important;
 
     /* --- 解决问题 1: 去掉右下角下拉标 --- */
     resize: none; 
@@ -1140,6 +1140,7 @@ button#gist-find{
 /* 成功/错误状态（可选，你 JS 里可以加 class） */
 .gist-status.success { color: #28a745; }
 .gist-status.error   { color: #dc3545; }
+
 
 
 
