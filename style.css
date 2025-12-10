@@ -876,7 +876,7 @@ body {
 .setting-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0,102,255,0.15);
+    box-shadow: 0 0 0 3px rgba(95, 95, 95, 0.15);
     background: white;
 }
 
@@ -1057,7 +1057,7 @@ button#del-preset-btn.icon-btn.danger{
     outline: none;
     border-color: var(--primary-color);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+    box-shadow: 0 0 0 3px rgba(112, 112, 112, 0.1);
 }
 
 .input-hint {
@@ -1175,12 +1175,11 @@ button#gist-find{
 
 /* ==================== 左侧竖排目录（像书签一样）================= */
 .settings-sidebar {
-    width: 60px;                /* 手机上固定宽度 */
+    width: 50px;                /* 手机上固定宽度 */
     background: rgba(245,245,245,0.95);
     backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(0,0,0,0.08);
     padding: 20px 0;
     flex-shrink: 0;
 }
@@ -1246,7 +1245,6 @@ button#gist-find{
     color: #333;
     font-weight: 600;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 
 /* ==================== 手机适配（屏幕小于 640px 时）=================== */
@@ -1260,7 +1258,6 @@ button#gist-find{
         padding: 0;
         flex-direction: row;            /* 横向排列三个标签 */
         border-right: none;
-        border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     .tab-item {
         writing-mode: horizontal-tb;    /* 手机恢复横排 */
@@ -1554,18 +1551,17 @@ body.dark-mode .settings-content {
 }
 
 body.dark-mode .settings-sidebar {
-    width: 60px;
-    background: rgba(57, 57, 57, 0.95);
+    width: 50px;
+    background: rgba(31, 31, 31, 0.95);
     backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(0, 0, 0, 0.08);
     padding: 20px 0;
     flex-shrink: 0;
 }
 
 body.dark-mode .tab-item.active {
-    background: rgb(27, 27, 27);
+    background: #3b3b3b;
     color: #fefefe;
 }
 
@@ -1591,7 +1587,6 @@ body.dark-mode .tab-item:hover:not(.active) {
         padding: 0;
         flex-direction: row;
         background: rgba(40, 40, 40, 0.95);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
         backdrop-filter: blur(12px);
     }
 
@@ -1601,13 +1596,14 @@ body.dark-mode .tab-item:hover:not(.active) {
         width: 33.333%;
         padding: 16px 0;
         color: #cccccc;
+        background-color: #222222;
         font-weight: 500;
         font-size: 15px;
         transition: all 0.25s ease;
     }
 
     body.dark-mode .tab-item.active {
-        background: rgba(255, 255, 255, 0.18) !important;
+        background: #333333 !important;
         color: #ffffff !important;
         font-weight: 600;
     }
