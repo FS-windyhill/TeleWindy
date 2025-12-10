@@ -812,7 +812,6 @@ body {
     text-align: center;
     padding: 8px;
     border-radius: 14px;
-    background: rgba(0,0,0,0.05);
     max-width: 100%;    
 }
 
@@ -841,14 +840,6 @@ body {
 }
 
 /* ========== 设置中心标题美化 ========== */
-.settings-title {
-    margin: 5px 0 20px 0;
-    text-align: center;
-    font-size: 22px;
-    color: #333;
-    font-weight: 600;
-}
-
 .settings-section-title {
     margin: 28px 0 12px 0;
     font-size: 17px;
@@ -1111,6 +1102,142 @@ button#gist-find{
 /* 成功/错误状态（可选，你 JS 里可以加 class） */
 .gist-status.success { color: #28a745; }
 .gist-status.error   { color: #dc3545; }
+
+
+
+/* ==================== 新版设置弹窗整体布局 ==================== */
+.settings-modal {
+    width: 94%;
+    max-width: 960px;           /* PC 上更宽敞 */
+    max-height: 92vh;
+    padding: 20px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.settings-title {
+    text-align: center;
+    font-size: 22px;
+    margin: 0 0 16px 0;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.settings-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.6);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ==================== 左侧竖排目录（像书签一样）================= */
+.settings-sidebar {
+    width: 60px;                /* 手机上固定宽度 */
+    background: rgba(245,245,245,0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(0,0,0,0.08);
+    padding: 20px 0;
+    flex-shrink: 0;
+}
+
+.tab-item {
+    writing-mode: vertical-rl;      /* 关键：文字竖排 */
+    text-orientation: mixed;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    position: relative;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+/* 选中状态：彩色便签效果 */
+.tab-item.active {
+    background: rgb(255, 255, 255);
+}
+
+/* 悬停也有一点反馈 */
+.tab-item:hover:not(.active) {
+    background: rgba(0,0,0,0.06);
+    color: #333;
+}
+
+.tab-text {
+    letter-spacing: 8px;           /* 竖排时字间距更好看 */
+    padding: 0 8px;
+}
+
+/* ==================== 右侧内容区 ==================== */
+.settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    background: rgba(255,255,255,0.8);
+}
+
+/* 每个 tab-pane 默认隐藏 */
+.tab-pane {
+    display: none;
+}
+.tab-pane.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 标题稍微调一下间距 */
+.settings-content .section-title {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* ==================== 手机适配（屏幕小于 640px 时）=================== */
+@media (max-width: 640px) {
+    .settings-container {
+        flex-direction: column;        /* 手机上变成上下布局 */
+    }
+    .settings-sidebar {
+        width: 100%;
+        height: 50px;
+        padding: 0;
+        flex-direction: row;            /* 横向排列三个标签 */
+        border-right: none;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .tab-item {
+        writing-mode: horizontal-tb;    /* 手机恢复横排 */
+        height: auto;
+        width: 33.333%;
+        padding: 0;
+    }
+    .tab-text {
+        letter-spacing: normal;
+    }
+    .settings-content {
+        padding: 20px 18px;
+    }
+}
+
+
+
 
 /* ============================================== */
 /* PART 3: 夜间模式 (Dark Mode) */
@@ -1377,4 +1504,85 @@ body.dark-mode button.small-btn {
 body.dark-mode button#modal-cancel {
     background: var(--btn-color);
     color: #ffffff;
+}
+
+body.dark-mode .settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    background: rgba(50, 50, 50, 0.92);
+}
+
+body.dark-mode .settings-sidebar {
+    width: 60px;
+    background: rgba(57, 57, 57, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 20px 0;
+    flex-shrink: 0;
+}
+
+body.dark-mode .tab-item.active {
+    background: rgb(27, 27, 27);
+    color: #fefefe;
+}
+
+/* 悬停也有一点反馈 */
+body.dark-mode .tab-item:hover:not(.active) {
+    background: rgba(0,0,0,0.06);
+    color: #fefefe;
+}
+
+/* ============================================== */
+/* PART 7: 夜间模式下的手机适配（< 640px）      */
+/* ============================================== */
+
+/* 手机端：顶部横向 Tab 样式覆盖 */
+@media (max-width: 640px) {
+    body.dark-mode .settings-container {
+        flex-direction: column;
+    }
+
+    body.dark-mode .settings-sidebar {
+        width: 100%;
+        height: 50px;
+        padding: 0;
+        flex-direction: row;
+        background: rgba(40, 40, 40, 0.95);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(12px);
+    }
+
+    body.dark-mode .tab-item {
+        writing-mode: horizontal-tb;
+        height: auto;
+        width: 33.333%;
+        padding: 16px 0;
+        color: #cccccc;
+        font-weight: 500;
+        font-size: 15px;
+        transition: all 0.25s ease;
+    }
+
+    body.dark-mode .tab-item.active {
+        background: rgba(255, 255, 255, 0.18) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+
+    body.dark-mode .tab-item:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+    }
+
+    body.dark-mode .tab-text {
+        letter-spacing: normal;
+    }
+
+    body.dark-mode .settings-content {
+        padding: 20px 18px;
+        background: rgba(45, 45, 45, 0.95);
+    }
 }

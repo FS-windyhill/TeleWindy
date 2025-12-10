@@ -1,11 +1,6 @@
 /**
- * TeleWindy Core Logic - Refactored
- * 结构说明：
- * 1. CONFIG & STATE: 全局配置常量与运行时状态
- * 2. STORAGE SERVICE: 负责数据的持久化 (LocalStorage)
- * 3. API SERVICE: 负责与 LLM 通信及模型拉取
- * 4. UI RENDERER: 负责界面的 DOM 操作与渲染
- * 5. APP CONTROLLER: 核心业务逻辑 (事件绑定、初始化)
+ * TeleWindy Core Logic - Refactored (v2.0)
+ * 包含：核心对话、Gist云备份、日夜模式、文件导入导出
  */
 
 // =========================================
@@ -14,16 +9,16 @@
 
 const CONFIG = {
     STORAGE_KEY: 'teleWindy_char_data_v1',
-    OLD_STORAGE_KEY: 'octopus_coach_chat_history', // 兼容旧版
-    SETTINGS_KEY: 'teleWindy_settings_v1',         // 新增：专门存设置
+    SETTINGS_KEY: 'teleWindy_settings_v1', 
+    GIST_ID_KEY: 'telewindy-gist-id',      // 专门存 Gist ID 的 Key
     DEFAULT: {
         API_URL: 'https://api.siliconflow.cn/v1/chat/completions',
         MODEL: 'zai-org/GLM-4.6',
-        // 建议留空，强制用户输入，或者放一个公共体验 Key
         API_KEY: '', 
         WALLPAPER: 'wallpaper.jpg',
         USER_AVATAR: 'user.jpg',
-        GIST_TOKEN: '',        // ← 新增这一行
+        GIST_TOKEN: '',
+        THEME: 'light' // ★★★ 新增：默认日间模式
     },
     SYSTEM_PROMPT: `
 请完全代入角色设定，以该角色的语气和思考方式，与用户交流。
@@ -39,24 +34,30 @@ const CONFIG = {
 const STATE = {
     contacts: [],
     currentContactId: null,
-    settings: {}, // 存放 API Key, URL, Model, Wallpaper 等
+    settings: {}, 
     isTyping: false
 };
 
 // =========================================
-// 2. STORAGE SERVICE (数据存储)
+// 2. STORAGE SERVICE (本地持久化)
 // =========================================
 const Storage = {
-    // 增强版的 Storage.load 函数
     load() {
         // 1. 加载设置
         const settingsRaw = localStorage.getItem(CONFIG.SETTINGS_KEY);
         let loadedSettings = settingsRaw ? JSON.parse(settingsRaw) : {};
 
-        // === 关键修复：合并默认值和加载值 ===
+        // 兼容旧版散装存储的 Theme (如果有)
+        const legacyTheme = localStorage.getItem('appTheme');
+        if (legacyTheme) {
+            loadedSettings.THEME = legacyTheme;
+            localStorage.removeItem('appTheme'); // 迁移后删除旧key
+        }
+
+        // 合并默认值
         STATE.settings = { ...CONFIG.DEFAULT, ...loadedSettings };
 
-        // 兼容旧的散装存储
+        // 兼容旧的散装头像壁纸
         if (!settingsRaw) {
             const oldUserAvatar = localStorage.getItem('fs_user_avatar');
             const oldWallpaper = localStorage.getItem('fs_wallpaper');
@@ -68,11 +69,9 @@ const Storage = {
         const contactsRaw = localStorage.getItem(CONFIG.STORAGE_KEY);
         if (contactsRaw) {
             STATE.contacts = JSON.parse(contactsRaw);
-        } else {
-            this.migrateOldData();
         }
 
-        // 兜底：如果没有联系人，创建一个默认的
+        // 兜底：如果没有联系人
         if (STATE.contacts.length === 0) {
             STATE.contacts.push({
                 id: Date.now().toString(),
@@ -91,27 +90,56 @@ const Storage = {
     saveSettings() {
         localStorage.setItem(CONFIG.SETTINGS_KEY, JSON.stringify(STATE.settings));
     },
-
-    migrateOldData() {
-        const oldData = localStorage.getItem(CONFIG.OLD_STORAGE_KEY);
-        if (oldData) {
-            try {
-                const history = JSON.parse(oldData);
-                STATE.contacts.push({
-                    id: 'legacy_' + Date.now(),
-                    name: '小真蛸 (旧版)',
-                    avatar: 'char.jpg',
-                    prompt: '旧版数据迁移角色',
-                    history: history
-                });
-                localStorage.removeItem(CONFIG.OLD_STORAGE_KEY);
-            } catch (e) { console.error('Migration failed', e); }
+    
+    // 获取用于备份的所有数据
+    exportAllForBackup() {
+        const data = {};
+        // 遍历所有 LocalStorage
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const value = localStorage.getItem(key);
+            
+            // 特殊处理设置中的 Token 加密
+            if (key === CONFIG.SETTINGS_KEY) {
+                try {
+                    const settings = JSON.parse(value);
+                    if (settings.GIST_TOKEN && !settings.GIST_TOKEN.startsWith('ENC_')) {
+                        const safeSettings = { ...settings };
+                        safeSettings.GIST_TOKEN = 'ENC_' + btoa(safeSettings.GIST_TOKEN);
+                        data[key] = JSON.stringify(safeSettings);
+                    } else {
+                        data[key] = value;
+                    }
+                } catch (e) { data[key] = value; }
+            } else {
+                data[key] = value;
+            }
         }
+        return data;
+    },
+
+    // 恢复备份数据
+    importFromBackup(data) {
+        localStorage.clear();
+        Object.keys(data).forEach(key => {
+            let value = data[key];
+            // 特殊处理设置中的 Token 解密
+            if (key === CONFIG.SETTINGS_KEY) {
+                try {
+                    const settings = JSON.parse(value);
+                    if (settings.GIST_TOKEN && settings.GIST_TOKEN.startsWith('ENC_')) {
+                        settings.GIST_TOKEN = atob(settings.GIST_TOKEN.replace('ENC_', ''));
+                        value = JSON.stringify(settings);
+                    }
+                } catch (e) { console.error('Token decrypt failed', e); }
+            }
+            localStorage.setItem(key, value);
+        });
     }
 };
 
 // =========================================
-// 3. API SERVICE (网络请求)
+// 3. API SERVICE (LLM通信)
 // =========================================
 const API = {
     getProvider(url) {
@@ -143,7 +171,7 @@ const API = {
         const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
         const sysPrompts = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
 
-        // --- 构建请求体 ---
+        // 构建请求体
         if (provider === 'claude') {
             options.headers['x-api-key'] = API_KEY;
             options.headers['anthropic-version'] = '2023-06-01';
@@ -172,18 +200,8 @@ const API = {
             });
         }
 
-        // ==========================================================
-        // ★★★ 你的 Log 回来啦！ ★★★
-        // ==========================================================
-        console.log(`👇👇👇 === [${provider.toUpperCase()}] 真实发送给 AI 的请求体 (Raw Body) === 👇👇👇`);
-        try {
-            console.log(JSON.parse(options.body)); 
-        } catch(e) {
-            console.log(options.body); 
-        }
-        console.log('👆👆👆 ========================================================== 👆👆👆');
+        console.log(`[${provider}] Sending...`, JSON.parse(options.body));
 
-        // --- 发送请求 ---
         const response = await fetch(fetchUrl, options);
         if (!response.ok) {
             const errText = await response.text();
@@ -192,7 +210,6 @@ const API = {
         
         const data = await response.json();
         
-        // --- 解析响应 ---
         if (provider === 'claude') return data.content[0].text.trim();
         if (provider === 'gemini') return data.candidates[0].content.parts[0].text.trim();
         return data.choices[0].message.content.trim();
@@ -200,7 +217,180 @@ const API = {
 };
 
 // =========================================
-// 4. UI RENDERER (DOM 操作)
+// 4. CLOUD SYNC (Gist 同步服务)
+// =========================================
+const CloudSync = {
+    // UI 引用
+    els: {
+        token: document.getElementById('gist-token'),
+        idInput: document.getElementById('gist-id-input'),
+        status: document.getElementById('gist-status')
+    },
+
+    init() {
+        const savedId = localStorage.getItem(CONFIG.GIST_ID_KEY);
+        if (savedId) {
+            this.els.idInput.value = savedId;
+            this.showStatus(`本地加载 Gist ID: ${savedId.slice(0, 6)}...`, false);
+        }
+    },
+
+    showStatus(msg, isError = false) {
+        this.els.status.textContent = msg;
+        this.els.status.style.color = isError ? '#d32f2f' : '#2e7d32';
+    },
+
+    getToken() {
+        const token = STATE.settings.GIST_TOKEN;
+        if (!token) {
+            this.showStatus('请先在上方设置并保存 Token', true);
+            return null;
+        }
+        return token;
+    },
+
+    updateGistId(newId) {
+        if (newId && typeof newId === 'string' && newId.trim() !== '') {
+            const cleanId = newId.trim();
+            this.els.idInput.value = cleanId;
+            localStorage.setItem(CONFIG.GIST_ID_KEY, cleanId);
+            return cleanId;
+        }
+        return null;
+    },
+
+    async findBackup() {
+        const token = this.getToken();
+        if (!token) return;
+
+        this.showStatus('正在云端查找...');
+        try {
+            const res = await fetch('https://api.github.com/gists', {
+                headers: { Authorization: `token ${token}` }
+            });
+            if (!res.ok) throw new Error(`查找失败 (${res.status})`);
+
+            const gists = await res.json();
+            const backup = gists.find(g => g.description === "TeleWindy 聊天记录与配置自动备份");
+
+            if (backup) {
+                this.updateGistId(backup.id);
+                this.showStatus(`找到备份！ID: ${backup.id.slice(0, 8)}...`);
+            } else {
+                this.showStatus('未找到匹配的 TeleWindy 备份', true);
+            }
+        } catch (e) {
+            this.showStatus(e.message, true);
+        }
+    },
+
+    async createBackup() {
+        const token = this.getToken();
+        if (!token) return;
+
+        this.showStatus('正在创建并备份...');
+        const allData = Storage.exportAllForBackup();
+        const payload = {
+            description: "TeleWindy 聊天记录与配置自动备份", 
+            public: false,
+            files: { "telewindy-backup.json": { content: JSON.stringify({ 
+                backup_at: new Date().toISOString(), 
+                app: "TeleWindy", 
+                data: allData 
+            }, null, 2) } }
+        };
+
+        try {
+            const res = await fetch('https://api.github.com/gists', {
+                method: 'POST',
+                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                this.updateGistId(json.id);
+                this.showStatus(`创建成功！ID: ${json.id}`);
+            } else {
+                throw new Error('创建失败');
+            }
+        } catch (e) {
+            this.showStatus(e.message, true);
+        }
+    },
+
+    async updateBackup() {
+        const token = this.getToken();
+        const gistId = this.els.idInput.value.trim();
+        if (!token || !gistId) return this.showStatus('缺少 Token 或 Gist ID', true);
+
+        this.showStatus('正在同步更新...');
+        const allData = Storage.exportAllForBackup();
+        const payload = { files: { "telewindy-backup.json": { content: JSON.stringify({ 
+            backup_at: new Date().toISOString(), 
+            app: "TeleWindy", 
+            data: allData 
+        }, null, 2) } } };
+
+        try {
+            const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
+                method: 'PATCH',
+                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                this.showStatus('备份更新成功！' + new Date().toLocaleTimeString());
+            } else if (res.status === 404) {
+                localStorage.removeItem(CONFIG.GIST_ID_KEY);
+                this.showStatus('ID失效，请重新创建', true);
+            } else {
+                throw new Error('更新失败');
+            }
+        } catch (e) {
+            this.showStatus(e.message, true);
+        }
+    },
+
+    async restoreBackup() {
+        const token = this.getToken();
+        const gistId = this.els.idInput.value.trim();
+        if (!token || !gistId) return this.showStatus('缺少 Token 或 Gist ID', true);
+
+        this.showStatus('正在拉取恢复...');
+        try {
+            const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
+                headers: { Authorization: `token ${token}` }
+            });
+            if (!res.ok) throw new Error('获取失败');
+
+            const json = await res.json();
+            const file = json.files['telewindy-backup.json'];
+            if (!file) throw new Error('文件不存在');
+
+            let content = file.content;
+            if (file.truncated) {
+                const rawRes = await fetch(file.raw_url);
+                content = await rawRes.text();
+            }
+
+            // 修复可能存在的控制字符
+            const cleaned = content.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+            const backupData = JSON.parse(cleaned);
+
+            if (backupData && backupData.data) {
+                Storage.importFromBackup(backupData.data);
+                this.showStatus('恢复成功！即将刷新...');
+                setTimeout(() => location.reload(), 2000);
+            }
+        } catch (e) {
+            this.showStatus('恢复出错: ' + e.message, true);
+        }
+    }
+};
+
+// =========================================
+// 5. UI RENDERER (DOM 操作)
 // =========================================
 const UI = {
     // 缓存常用 DOM
@@ -221,20 +411,42 @@ const UI = {
         settingUrl: document.getElementById('custom-api-url'),
         settingKey: document.getElementById('custom-api-key'),
         settingModel: document.getElementById('custom-model-select'),
-        fetchBtn: document.getElementById('fetch-models-btn')
+        fetchBtn: document.getElementById('fetch-models-btn'),
+        themeLight: document.getElementById('theme-light'),
+        themeDark: document.getElementById('theme-dark')
     },
 
     init() {
-        this.applyTheme();
+        this.applyAppearance();
         this.renderContacts();
+        CloudSync.init(); // 初始化云同步 ID 显示
     },
 
-    applyTheme() {
-        const { WALLPAPER } = STATE.settings;
+    // ★★★ 统一管理外观 (壁纸 + 日夜模式) ★★★
+    applyAppearance() {
+        const { WALLPAPER, THEME } = STATE.settings;
+        
+        // 1. 设置壁纸
         document.body.style.backgroundImage = `url('${WALLPAPER}')`;
-        if (WALLPAPER === 'wallpaper.jpg') {
+        // 如果是默认壁纸且是日间模式，给个浅灰底色
+        if (WALLPAPER === 'wallpaper.jpg' && THEME !== 'dark') {
             document.body.style.backgroundColor = '#f2f2f2';
         }
+
+        // 2. 设置日夜模式 Class
+        if (THEME === 'dark') {
+            document.body.classList.add('dark-mode');
+            if(this.els.themeDark) this.els.themeDark.checked = true;
+        } else {
+            document.body.classList.remove('dark-mode');
+            if(this.els.themeLight) this.els.themeLight.checked = true;
+        }
+    },
+
+    toggleTheme(newTheme) {
+        STATE.settings.THEME = newTheme;
+        Storage.saveSettings();
+        this.applyAppearance();
     },
 
     switchView(viewName) {
@@ -245,7 +457,7 @@ const UI = {
             this.els.viewChat.classList.add('hidden');
             this.els.viewList.classList.remove('hidden');
             STATE.currentContactId = null;
-            this.renderContacts(); // 刷新列表最新消息
+            this.renderContacts(); 
         }
     },
 
@@ -387,8 +599,9 @@ const UI = {
         }
     }
 };
+
 // =========================================
-// 5. APP CONTROLLER (核心逻辑与事件)
+// 6. APP CONTROLLER (业务逻辑)
 // =========================================
 const App = {
     init() {
@@ -418,7 +631,7 @@ const App = {
         let userText = UI.els.input.value.trim();
         const timestamp = formatTimestamp();
 
-        // 1. 处理消息历史
+        // 历史记录处理
         const sysMsg = { role: 'system', content: contact.prompt };
         if (contact.history.length === 0 || contact.history[0].role !== 'system') {
             contact.history.unshift(sysMsg);
@@ -434,14 +647,10 @@ const App = {
             while(contact.history.length > 0 && contact.history[contact.history.length-1].role === 'assistant') {
                 contact.history.pop();
             }
-
             UI.removeLatestAiBubbles(); 
-            
         } else {
-            // 正常发送
             if (!userText) return;
             
-            // UI上拆分显示气泡
             const paragraphs = userText.split(/\n\s*\n/).filter(p => p.trim());
             if (paragraphs.length > 0) {
                 paragraphs.forEach(p => UI.appendMessageBubble(p.trim(), 'user', null, timestamp));
@@ -449,30 +658,23 @@ const App = {
                 UI.appendMessageBubble(userText, 'user', null, timestamp);
             }
 
-            // 数据层：存完整的
             contact.history.push({ 
                 role: 'user', 
                 content: userText,
                 timestamp: timestamp 
             });
             
-            // === 发送后清理 ===
-            UI.els.input.value = '';            // 清空内容
-            UI.els.input.style.height = '38px'; // ★★★ 强制回弹高度 ★★★
+            UI.els.input.value = '';            
+            UI.els.input.style.height = '38px'; 
             
-            // 移动端发送后通常希望收起键盘看消息，PC端通常希望保持焦点
             const isMobile = window.innerWidth < 800;
-            if (isMobile) {
-                UI.els.input.blur();
-            } else {
-                UI.els.input.focus(); 
-            }
+            if (isMobile) UI.els.input.blur();
+            else UI.els.input.focus(); 
         }        
 
         Storage.saveContacts();
         UI.setLoading(true);
 
-        // 2. 准备发送给 API 的消息
         const recentHistory = contact.history
             .filter(m => m.role !== 'system')
             .slice(-30)
@@ -494,7 +696,6 @@ const App = {
 
         try {
             const aiText = await API.chat(messagesToSend, STATE.settings);
-           
             const aiTimestamp = formatTimestamp();
             contact.history.push({ 
                 role: 'assistant', 
@@ -512,58 +713,26 @@ const App = {
             UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar);
         } finally {
             UI.updateRerollState(contact);
-            // 如果是 PC，发送完 AI 回复后再次聚焦输入框
             if (window.innerWidth >= 800) UI.els.input.focus();
         }
     },
 
-    // --- 设置相关的逻辑 (保持不变) ---
     openSettings() {
         UI.els.mainModal.classList.remove('hidden');
         const s = STATE.settings;
         UI.els.settingUrl.value = s.API_URL || '';
         UI.els.settingKey.value = s.API_KEY || '';
-        UI.els.settingModel.value = STATE.settings.MODEL || 'zai-org/GLM-4.6';
-        document.getElementById('gist-token').value = STATE.settings.GIST_TOKEN || '';
+        UI.els.settingModel.value = s.MODEL || 'zai-org/GLM-4.6';
+        document.getElementById('gist-token').value = s.GIST_TOKEN || ''; // 填充 Gist Token
+        
+        // 填充模型Select
         if (s.MODEL) UI.els.settingModel.innerHTML = `<option value="${s.MODEL}">${s.MODEL}</option>`;
+        
+        // 预览壁纸
         const previewImg = document.getElementById('wallpaper-preview-img');
         if (s.WALLPAPER && s.WALLPAPER.startsWith('data:')) {
             previewImg.src = s.WALLPAPER;
             document.getElementById('wallpaper-preview').classList.remove('hidden');
-        }
-    },
-
-    async fetchModelsForUI() {
-        const url = UI.els.settingUrl.value.trim();
-        const key = UI.els.settingKey.value.trim();
-        if(!url || !key) return alert('请先填写地址和密钥');
-        const btn = UI.els.fetchBtn;
-        btn.textContent = '获取中...';
-        btn.disabled = true;
-        try {
-            const data = await API.fetchModels(url, key);
-            const datalist = document.getElementById('model-options');
-            datalist.innerHTML = '';
-            if (data.data && Array.isArray(data.data)) {
-                data.data.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.id;
-                    datalist.appendChild(opt);
-                });
-                if (data.data.length > 0) {
-                    UI.els.settingModel.value = data.data[0].id;
-                    STATE.settings.MODEL = data.data[0].id; 
-                }
-                alert(`成功拉取 ${data.data.length} 个模型！`);
-            } else {
-                alert('连接成功，但对方没有返回有效的模型列表。');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('拉取失败，请手动输入模型名。');
-        } finally {
-            btn.textContent = '拉取模型';
-            btn.disabled = false;
         }
     },
 
@@ -575,68 +744,62 @@ const App = {
                 rawUrl += rawUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions';
             }
         }
-        UI.els.settingUrl.value = rawUrl;
-        STATE.settings.API_URL = rawUrl;
-        STATE.settings.API_KEY = UI.els.settingKey.value.trim();
-        STATE.settings.MODEL = UI.els.settingModel.value;
-        STATE.settings.GIST_TOKEN = document.getElementById('gist-token').value.trim() || ''; 
+        
+        const s = STATE.settings;
+        s.API_URL = rawUrl;
+        s.API_KEY = UI.els.settingKey.value.trim();
+        s.MODEL = UI.els.settingModel.value;
+        s.GIST_TOKEN = document.getElementById('gist-token').value.trim() || ''; 
 
+        // 壁纸逻辑
         const wallpaperPreview = document.getElementById('wallpaper-preview-img').src;
         if(wallpaperPreview && wallpaperPreview.startsWith('data:')) {
-            STATE.settings.WALLPAPER = wallpaperPreview;
-        } else if (!STATE.settings.WALLPAPER) {
-            STATE.settings.WALLPAPER = 'wallpaper.jpg';
+            s.WALLPAPER = wallpaperPreview;
+        } else if (!s.WALLPAPER) {
+            s.WALLPAPER = 'wallpaper.jpg';
         }
+
         Storage.saveSettings();
-        UI.applyTheme(); 
+        UI.applyAppearance(); // 立即应用（包含日夜模式）
         UI.els.mainModal.classList.add('hidden');
         alert(`设置已保存！\nAPI 地址已自动规范化为：\n${rawUrl}`);
     },
 
-    readFile(file) {
-        return new Promise((r, j) => {
-            const reader = new FileReader();
-            reader.onload = e => r(e.target.result);
-            reader.onerror = j;
-            reader.readAsDataURL(file);
-        });
-    },
-
     bindEvents() {
-        // === 1. 初始化输入框样式 ===
+        // --- 输入与发送 ---
         UI.els.input.style.overflowY = 'hidden'; 
-        UI.els.input.style.resize = 'none';      
-        UI.els.input.style.height = '38px';      
-
-        // === 2. 监听输入，实现自动增高 ===
         UI.els.input.addEventListener('input', function() {
             this.style.height = 'auto'; 
             this.style.height = (this.scrollHeight) + 'px';
             if (this.value === '') this.style.height = '38px';
         });
 
-        // === 3. 聊天发送逻辑 ===
         UI.els.sendBtn.onclick = () => this.handleSend(false);
-        
         UI.els.input.onkeydown = (e) => {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
-            // PC端：Enter 发送，Shift+Enter 换行
-            // 移动端：Enter 换行 (默认)，点击按钮发送
+            const isMobile = window.innerWidth < 800;
             if (e.key === "Enter" && !e.shiftKey && !isMobile) {
                 e.preventDefault(); 
                 App.handleSend(false);
             }
         };
-
         UI.els.rerollBtn.onclick = () => this.handleSend(true);
         document.getElementById('back-btn').onclick = () => UI.switchView('list');
 
-        // === 4. 设置与弹窗逻辑 ===
+        // --- 主设置弹窗 ---
         document.getElementById('main-settings-btn').onclick = () => this.openSettings();
         document.getElementById('main-cancel').onclick = () => UI.els.mainModal.classList.add('hidden');
         document.getElementById('main-confirm').onclick = () => this.saveSettingsFromUI();
         UI.els.fetchBtn.onclick = () => this.fetchModelsForUI();
 
+        // ★★★ 日夜模式切换 ★★★
+        if (UI.els.themeLight) {
+            UI.els.themeLight.addEventListener('change', () => UI.toggleTheme('light'));
+        }
+        if (UI.els.themeDark) {
+            UI.els.themeDark.addEventListener('change', () => UI.toggleTheme('dark'));
+        }
+
+        // --- 壁纸上传 ---
         document.getElementById('wallpaper-file-input').onchange = async (e) => {
             if(e.target.files[0]) {
                 const base64 = await this.readFile(e.target.files[0]);
@@ -645,6 +808,7 @@ const App = {
             }
         };
 
+        // --- 角色编辑弹窗 ---
         const modal = document.getElementById('modal-overlay');
         document.getElementById('add-contact-btn').onclick = () => this.openEditModal(null);
         document.getElementById('chat-settings-btn').onclick = () => this.openEditModal(STATE.currentContactId);
@@ -669,6 +833,7 @@ const App = {
             }
         };
 
+        // --- 头像上传 ---
         this.bindImageUpload('edit-avatar-file', 'edit-avatar-preview', 'edit-avatar'); 
         this.bindImageUpload('user-avatar-file', 'user-avatar-preview', null, (base64) => {
             STATE.settings.USER_AVATAR = base64;
@@ -680,8 +845,61 @@ const App = {
         });
         document.getElementById('edit-avatar-upload-btn').onclick = () => document.getElementById('edit-avatar-file').click();
         document.getElementById('user-avatar-upload-btn').onclick = () => document.getElementById('user-avatar-file').click();
+
+        // --- ★★★ Cloud Sync (Gist) 事件绑定 ★★★ ---
+        document.getElementById('gist-find').onclick = () => CloudSync.findBackup();
+        document.getElementById('gist-create-and-backup').onclick = () => CloudSync.createBackup();
+        document.getElementById('gist-backup').onclick = () => CloudSync.updateBackup();
+        document.getElementById('gist-restore').onclick = () => CloudSync.restoreBackup();
+        document.getElementById('gist-id-input').onchange = (e) => CloudSync.updateGistId(e.target.value);
     },
 
+    // 辅助：读取文件转Base64
+    readFile(file) {
+        return new Promise((r, j) => {
+            const reader = new FileReader();
+            reader.onload = e => r(e.target.result);
+            reader.onerror = j;
+            reader.readAsDataURL(file);
+        });
+    },
+
+    // 辅助：拉取模型列表逻辑
+    async fetchModelsForUI() {
+        const url = UI.els.settingUrl.value.trim();
+        const key = UI.els.settingKey.value.trim();
+        if(!url || !key) return alert('请先填写地址和密钥');
+        const btn = UI.els.fetchBtn;
+        btn.textContent = '获取中...';
+        btn.disabled = true;
+        try {
+            const data = await API.fetchModels(url, key);
+            const datalist = document.getElementById('model-options');
+            datalist.innerHTML = '';
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    datalist.appendChild(opt);
+                });
+                if (data.data.length > 0) {
+                    UI.els.settingModel.value = data.data[0].id;
+                    // 这里不直接存STATE，等用户点保存
+                }
+                alert(`成功拉取 ${data.data.length} 个模型！`);
+            } else {
+                alert('连接成功，但对方没有返回有效的模型列表。');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('拉取失败，请手动输入模型名。');
+        } finally {
+            btn.textContent = '拉取模型';
+            btn.disabled = false;
+        }
+    },
+
+    // 辅助：图片上传绑定
     bindImageUpload(inputId, imgId, inputUrlId, callback) {
         const el = document.getElementById(inputId);
         if(!el) return;
@@ -694,7 +912,8 @@ const App = {
             }
         };
     },
-
+    
+    // 辅助：角色弹窗
     openEditModal(id) {
         this.editingId = id;
         const modal = document.getElementById('modal-overlay');
@@ -750,25 +969,25 @@ const App = {
     }
 };
 
-
 // =========================================
-// 6. BOOTSTRAP (启动)
+// 7. UTILS & EXPORTS (工具与启动)
 // =========================================
-window.onload = () => App.init();
+function formatTimestamp() {
+    const now = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[now.getMonth()]}.${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
 
+// 供HTML按钮直接调用的文件导入导出（保留全局暴露）
 window.exportData = () => {
-    const data = JSON.stringify(localStorage, null, 2);
+    const data = JSON.stringify(Storage.exportAllForBackup(), null, 2);
     const blob = new Blob([data], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-
     const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_` +
-                      `${pad(now.getHours())}`;
-    a.download = `TeleWindy-Backup-${timestamp}.json`;
-
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    a.download = `TeleWindy-Backup-${ts}.json`;
     a.click();
     URL.revokeObjectURL(url); 
 };
@@ -776,12 +995,11 @@ window.exportData = () => {
 window.importData = (input) => {
     if (!input.files || !input.files[0]) return;
     if (!confirm('导入将覆盖当前所有设置，确定吗？')) return;
-    
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
             const data = JSON.parse(e.target.result);
-            Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+            Storage.importFromBackup(data);
             alert('导入成功，页面将刷新');
             location.reload();
         } catch(err) { alert('文件格式错误'); }
@@ -789,287 +1007,25 @@ window.importData = (input) => {
     reader.readAsText(input.files[0]);
 };
 
-// =========================================
-// 新增各种小工具
-// =========================================
-
-function formatTimestamp() {
-    const now = new Date();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[now.getMonth()];
-    const day = now.getDate();
-    const hour = now.getHours().toString().padStart(2, '0');
-    const minute = now.getMinutes().toString().padStart(2, '0');
-    return `${month}.${day} ${hour}:${minute}`;
-}
+// 启动应用
+window.onload = () => App.init();
 
 
-// ==================== GitHub Gist 同步功能 (升级版) ====================
-const gistTokenInput = document.getElementById('gist-token'); 
-const gistIdInput    = document.getElementById('gist-id-input'); 
-const gistStatusDiv  = document.getElementById('gist-status');
+// 小工具
+// 便签
 
-let currentGistId = localStorage.getItem('telewindy-gist-id') || null;
+// 设置中心左侧目录切换
+document.querySelectorAll('.tab-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const target = item.dataset.target;
 
-if (currentGistId) {
-    gistIdInput.value = currentGistId;
-    showGistStatus(`已从本地加载备份 ID: ${currentGistId.slice(0, 8)}...`, false);
-}
+        // 切换 active 类
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-function updateGistId(newId) {
-    if (newId && typeof newId === 'string' && newId.trim() !== '') {
-        currentGistId = newId.trim();
-        gistIdInput.value = currentGistId; 
-        localStorage.setItem('telewindy-gist-id', currentGistId); 
-        return true;
-    }
-    return false;
-}
-
-gistIdInput.addEventListener('change', () => {
-    if (updateGistId(gistIdInput.value)) {
-        showGistStatus('Gist ID 已手动更新。现在可以恢复了。');
-    }
+        item.classList.add('active');
+        document.getElementById(target).classList.add('active');
+    });
 });
-
-function showGistStatus(msg, isError = false) {
-    gistStatusDiv.textContent = msg;
-    gistStatusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
-}
-
-function exportAllData() {
-    const data = {};
-    const settingsKey = 'teleWindy_settings_v1'; 
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        const value = localStorage.getItem(key);
-        if (key === settingsKey) {
-            try {
-                let settings = JSON.parse(value);
-                let target = Array.isArray(settings) ? settings[0] : settings;
-                if (target && target.GIST_TOKEN && !target.GIST_TOKEN.startsWith('ENC_')) {
-                    const safeSettings = JSON.parse(JSON.stringify(settings));
-                    const safeTarget = Array.isArray(safeSettings) ? safeSettings[0] : safeSettings;
-                    safeTarget.GIST_TOKEN = 'ENC_' + btoa(safeTarget.GIST_TOKEN);
-                    data[key] = JSON.stringify(safeSettings);
-                } else { data[key] = value; }
-            } catch (e) { console.warn('导出时解析设置失败，原样备份', e); data[key] = value; }
-        } else { data[key] = value; }
-    }
-    return data;
-}
-
-function importAllData(data) {
-    localStorage.clear();
-    Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
-}
-
-
-document.getElementById('gist-find').addEventListener('click', async () => {
-    const token = STATE.settings.GIST_TOKEN;
-    if (!token) return showGistStatus('请先在设置中填写并保存 Token', true);
-
-    showGistStatus('正在云端查找 TeleWindy 备份...');
-
-    try {
-        const res = await fetch('https://api.github.com/gists', {
-            headers: { Authorization: `token ${token}` }
-        });
-
-        if (!res.ok) throw new Error(`查找失败 (${res.status})，请检查 Token 权限`);
-
-        const gists = await res.json();
-        
-        const backupGist = gists.find(gist => 
-            gist.description === "TeleWindy 聊天记录与配置自动备份" &&
-            gist.files['telewindy-backup.json']
-        );
-
-        if (backupGist) {
-            updateGistId(backupGist.id);
-            showGistStatus(`查找成功！已自动填入备份 ID: ${backupGist.id.slice(0, 8)}...`);
-        } else {
-            showGistStatus('未在你的 GitHub 账户下找到匹配的备份 Gist。', true);
-        }
-
-    } catch (e) {
-        showGistStatus('查找出错：' + e.message, true);
-    }
-});
-
-
-document.getElementById('gist-create-and-backup').addEventListener('click', async () => {
-    const token = STATE.settings.GIST_TOKEN;
-    if (!token) return showGistStatus('填写Token→点保存→再开始备份或恢复', true);
-
-    showGistStatus('正在创建 gist 并备份...');
-    const allData = exportAllData();
-    const payload = {
-        description: "TeleWindy 聊天记录与配置自动备份", 
-        public: false,
-        files: { "telewindy-backup.json": { content: JSON.stringify({ backup_at: new Date().toISOString(), app: "TeleWindy", data: allData }, null, 2) } }
-    };
-
-    try {
-        const res = await fetch('https://api.github.com/gists', {
-            method: 'POST',
-            headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            const json = await res.json();
-            if (json && json.id) {
-                updateGistId(json.id);
-                showGistStatus(`创建及备份成功！Gist ID: ${json.id}`);
-            } else {
-                throw new Error('未获取到有效 ID，请检查网络');
-            }
-        } else {
-            const err = await res.json().catch(() => ({}));
-            showGistStatus('创建失败：' + (err.message || res.status), true);
-        }
-    } catch (e) {
-        console.error(e);
-        showGistStatus('网络错误：' + e.message, true);
-    }
-});
-
-
-document.getElementById('gist-backup').addEventListener('click', async () => {
-    const gistIdToUse = gistIdInput.value.trim(); 
-    if (!gistIdToUse) return showGistStatus('Gist ID 为空。请先创建、查找或手动输入。', true);
-
-    const token = STATE.settings.GIST_TOKEN;
-    if (!token) return showGistStatus('请填写 Token', true);
-
-    showGistStatus('正在更新备份...');
-    const allData = exportAllData();
-    const payload = { files: { "telewindy-backup.json": { content: JSON.stringify({ backup_at: new Date().toISOString(), app: "TeleWindy", data: allData }, null, 2) } } };
-
-    try {
-        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { 
-            method: 'PATCH',
-            headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            showGistStatus('备份更新成功！' + new Date().toLocaleTimeString());
-        } else {
-            if (res.status === 404) {
-                localStorage.removeItem('telewindy-gist-id'); 
-                gistIdInput.value = ''; 
-                currentGistId = null;
-                showGistStatus('原备份 ID 失效（已自动清除），请重新「创建」或「查找」', true);
-            } else {
-                const err = await res.json().catch(() => ({}));
-                showGistStatus('备份失败：' + (err.message || res.status), true);
-            }
-        }
-    } catch (e) {
-        showGistStatus('网络错误：' + e.message, true);
-    }
-});
-
-
-document.getElementById('gist-restore').addEventListener('click', async () => {
-    const gistIdToUse = gistIdInput.value.trim(); 
-    if (!gistIdToUse) return showGistStatus('Gist ID 为空。请先「查找」或「手动输入」。', true);
-    
-    const token = STATE.settings.GIST_TOKEN;
-    if (!token) return showGistStatus('请填写 Token', true);
-
-    showGistStatus('正在从云端拉取数据...');
-
-    try {
-        const res = await fetch(`https://api.github.com/gists/${gistIdToUse}`, { 
-            headers: { Authorization: `token ${token}` }
-        });
-
-        if (!res.ok) {
-            if (res.status === 404) {
-                localStorage.removeItem('telewindy-gist-id');
-                gistIdInput.value = '';
-                currentGistId = null;
-                throw new Error('找不到该备份（ID失效），已重置状态。');
-            }
-            throw new Error(`Gist 获取失败 (${res.status})`);
-        }
-
-        const json = await res.json();
-        const file = json.files['telewindy-backup.json'];
-        if (!file) return showGistStatus('备份文件不存在', true);
-        let content = file.content;
-        if (file.truncated) {
-            const rawRes = await fetch(file.raw_url);
-            content = await rawRes.text();
-        }
-        let backupData;
-        try { backupData = JSON.parse(content); } 
-        catch (e) {
-            showGistStatus('JSON 解析失败，正在尝试修复...');
-            const cleaned = content.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-            backupData = JSON.parse(cleaned);
-        }
-        if (backupData && backupData.data) {
-            const settingsKey = 'teleWindy_settings_v1';
-            Object.keys(backupData.data).forEach(key => {
-                let value = backupData.data[key];
-                if (key === settingsKey) {
-                    try {
-                        let settings = JSON.parse(value);
-                        let target = Array.isArray(settings) ? settings[0] : settings;
-                        if (target && target.GIST_TOKEN && target.GIST_TOKEN.startsWith('ENC_')) {
-                            const rawBase64 = target.GIST_TOKEN.replace('ENC_', '');
-                            target.GIST_TOKEN = atob(rawBase64);
-                            value = JSON.stringify(settings);
-                        }
-                    } catch (e) { console.error('Token 还原失败', e); }
-                }
-                localStorage.setItem(key, value);
-            });
-            showGistStatus('恢复成功！3秒后自动刷新页面');
-            setTimeout(() => location.reload(), 3000);
-        } else { showGistStatus('备份格式错误', true); }
-
-    } catch (e) {
-        showGistStatus('恢复失败：' + e.message, true);
-    }
-});
-
-
-// 12.10小工具
-// --- 主题切换逻辑 ---
-
-// 1. 初始化：页面加载时检查本地存储
-document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('appTheme') || 'light'; // 默认为日间
-    setTheme(savedTheme);
-});
-
-// 2. 切换主题函数
-function setTheme(theme) {
-    const body = document.body;
-    const lightRadio = document.getElementById('theme-light');
-    const darkRadio = document.getElementById('theme-dark');
-
-    if (theme === 'dark') {
-        // 激活夜间模式
-        body.classList.add('dark-mode');
-        if(darkRadio) darkRadio.checked = true;
-        if(lightRadio) lightRadio.checked = false;
-    } else {
-        // 激活日间模式 (移除 class)
-        body.classList.remove('dark-mode');
-        if(lightRadio) lightRadio.checked = true;
-        if(darkRadio) darkRadio.checked = false;
-    }
-
-    // 保存到本地存储
-    localStorage.setItem('appTheme', theme);
-}
-
 
 
