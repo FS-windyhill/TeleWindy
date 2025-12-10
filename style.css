@@ -1,11 +1,11 @@
 :root {
     --primary-color: #505050;
     --background-color: #ffffff;
-    --text-color: #ffffff;
+    --text-color: #333;
     --message-bg-user: #d1ffbed8;
-    --message-bg-ai: rgba(50, 50, 50, 0.8);
+    --message-bg-ai: #ffffffd0;
     --message-border-user: #b3c5a3;
-    --message-border-ai: rgba(75, 75, 75, 1);    
+    --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
@@ -38,10 +38,10 @@ body {
 .app-header {
     position: relative;
     padding: 12px 24px;
-    border-bottom: 1px solid rgba(70,70,70,0.9);
+    border-bottom: 1px solid rgba(220,220,220,0.9);
     text-align: center;
     flex-shrink: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
 }
@@ -50,13 +50,13 @@ body {
 .app-header h1 {
     margin: 0;
     font-size: 1.1em;
-    color: #ffffff;
+    color: var(--primary-color);
 }
 
 .app-header p {
     margin: 2px 0 0;
     font-size: 0.8em;
-    color: #dddddd;
+    color: #666;
 }
 
 
@@ -96,10 +96,10 @@ body {
     flex-shrink: 0;   /* 输入框永远贴底 */
     /* 你原来的毛玻璃样式也保留 */
     padding: 8px 16px;
-    border-top: 1px solid rgba(50,50,50,0.9);
+    border-top: 1px solid rgba(220,220,220,0.9);
     display: flex;
     gap: 9px;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
     border-radius: 0;
@@ -109,9 +109,9 @@ body {
     flex-grow: 1;
     /* 调整内边距，使其文字垂直居中看起来像 input */
     padding: 6px 16px; 
-    border: 1px solid rgba(150,150,150,0.9);
+    border: 1px solid #ccc;
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.6) !important;
+    background: rgba(255, 255, 255, 0.6) !important;
 
     /* --- 解决问题 1: 去掉右下角下拉标 --- */
     resize: none; 
@@ -134,15 +134,15 @@ body {
 
 #task-input:focus {
     outline: none;
-    border-color: #ffffff;
-    background: rgba(50, 50, 50, 0.88) !important;
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.88) !important;
 }
 
 #send-button {
     padding: 5px 12px;
-    border:1px solid rgba(230, 230, 230, 0.5);
-    background: rgba(50, 50, 50, 0.2);
-    color: rgb(230, 230, 230);
+    border:1px solid rgba(127, 127, 127, 0.816);
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
     border-radius: 8px;
     font-size: 1em;
     cursor: pointer;
@@ -151,14 +151,14 @@ body {
 
 #reroll-footer-btn {
     padding: 5px 12px;
-    border:1px solid rgba(230, 230, 230, 0.5);
+    border:1px solid rgba(127, 127, 127, 0.816);
     cursor: pointer;
     border-radius: 8px;
     font-size: 1em;
     flex-shrink: 0;
     transition: background-color 0.2s;
-    background: rgba(50, 50, 50, 0.2);
-    color: rgb(230, 230, 230);
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
 }
 
 
@@ -298,6 +298,16 @@ body {
 }
 
 /* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
+.app-header {
+    flex-shrink: 0;              /* 顶栏不被压缩 */
+    /* 你原来的毛玻璃样式全部保留，超级好看 */
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(220,220,220,0.9);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    border-radius: 0;
+}
 
 #chat-window {
     flex: 1;                     /* 中间聊天区域吃掉所有剩余空间 */
@@ -313,7 +323,7 @@ body {
 #typing-status {
     margin: 4px 0 0;
     font-size: 0.8em;
-    color: rgba(255, 255, 255, 0.8);
+    color: #999;
     min-height: 1.2em;   /* 防止文字变了布局跳动 */
 }
 
@@ -1130,12 +1140,6 @@ button#gist-find{
 /* 成功/错误状态（可选，你 JS 里可以加 class） */
 .gist-status.success { color: #28a745; }
 .gist-status.error   { color: #dc3545; }
-
-
-
-
-
-
 
 
 
