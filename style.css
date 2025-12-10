@@ -1,18 +1,17 @@
 :root {
     --primary-color: #505050;
     --background-color: #ffffff;
-    --text-color-user: #232323;      /* 用户消息黑色 */
-    --text-color-ai: #ffffff;        /* AI 消息白色 */
-    --message-bg-user: #aff98fd8;
-    --message-bg-ai: #363636d0;
-    --message-border-user: #7fa65d;
-    --message-border-ai: #595959;    
+    --text-color: #333;
+    --message-bg-user: #d1ffbed8;
+    --message-bg-ai: #ffffffd0;
+    --message-border-user: #b3c5a3;
+    --message-border-ai: #e8e8e8;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
     --primary-btn-text: rgb(116, 118, 255);
     --btn-color: #f5f5f5;
-    --btn-border-color: #c0c0c0;
+    --btn-border-color: #a9a9a9;
 }
 
 /* 你原来的 body 样式全部删掉或注释就行 */
@@ -39,10 +38,10 @@ body {
 .app-header {
     position: relative;
     padding: 12px 24px;
-    border-bottom: 1px solid rgba(97, 97, 97, 0.9);
+    border-bottom: 1px solid rgba(220,220,220,0.9);
     text-align: center;
     flex-shrink: 0;
-    background: rgba(57, 57, 57, 0.8);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
 }
@@ -51,13 +50,13 @@ body {
 .app-header h1 {
     margin: 0;
     font-size: 1.1em;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--primary-color);
 }
 
 .app-header p {
     margin: 2px 0 0;
     font-size: 0.8em;
-    color: rgba(255, 255, 255, 0.6);
+    color: #666;
 }
 
 
@@ -85,10 +84,10 @@ body {
     flex-shrink: 0;   /* 输入框永远贴底 */
     /* 你原来的毛玻璃样式也保留 */
     padding: 8px 16px;
-    border-top: 1px solid rgba(71, 71, 71, 0.9);
+    border-top: 1px solid rgba(220,220,220,0.9);
     display: flex;
     gap: 9px;
-    background: rgba(31, 31, 31, 0.8);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
     border-radius: 0;
@@ -98,9 +97,9 @@ body {
     flex-grow: 1;
     /* 调整内边距，使其文字垂直居中看起来像 input */
     padding: 6px 16px; 
-    border: 1px solid #b5b5b5;
+    border: 1px solid #ccc;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.6) !important;
 
     /* --- 解决问题 1: 去掉右下角下拉标 --- */
     resize: none; 
@@ -123,15 +122,15 @@ body {
 
 #task-input:focus {
     outline: none;
-    border: 2px solid #b5b5b5;
-    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.88) !important;
 }
 
 #send-button {
     padding: 5px 12px;
-    border:1px solid rgba(182, 182, 182, 0.8);
-    background: rgba(251, 251, 251, 0.2);
-    color: rgba(255, 255, 255, 0.8);
+    border:1px solid rgba(127, 127, 127, 0.816);
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
     border-radius: 8px;
     font-size: 1em;
     cursor: pointer;
@@ -140,14 +139,14 @@ body {
 
 #reroll-footer-btn {
     padding: 5px 12px;
-    border:1px solid rgba(182, 182, 182, 0.8);
+    border:1px solid rgba(127, 127, 127, 0.816);
     cursor: pointer;
     border-radius: 8px;
     font-size: 1em;
     flex-shrink: 0;
     transition: background-color 0.2s;
-    background: rgba(251, 251, 251, 0.2);
-    color: rgba(255, 255, 255, 0.8);
+    background: rgba(251, 251, 251, 0.5);
+    color: rgb(131, 131, 131);
 }
 
 
@@ -233,14 +232,12 @@ body {
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
     border: 0.7px solid var(--message-border-user);
-    color: var(--text-color-user);
     border-top-right-radius: 3px;
 }
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
     border: 1.3px solid var(--message-border-ai);
-    color: var(--text-color-ai);
     border-top-left-radius: 3px;
 }
 
@@ -376,7 +373,7 @@ body {
     background: none;
     border: none;
     font-size: 24px;
-    color: #ffffff; /* 用你的主题色 */
+    color: var(--primary-btn-color); /* 用你的主题色 */
     cursor: pointer;
     padding: 0 10px;
     height: 100%; /* 增加点击区域 */
@@ -413,11 +410,11 @@ body {
     font-size: 16px;  /* 字体必须比盒子小，icon 才会居中且不拥挤 */
     line-height: 1;   /* 消除文字默认行高，防止垂直偏移 */
     font-weight: 300; /*稍微细一点点更像现代App */
-    color: #dedede;
+    color: #818181;
     
     /* --- 外观样式 --- */
-    border: 1px solid #ffffff81;
-    background: rgba(236, 236, 236, 0.2);
+    border: 1px solid #71717181;
+    background: rgba(236, 236, 236, 0.568);
     
     /* --- 5. iOS 专用修复 (防止苹果手机加默认按钮样式) --- */
     -webkit-appearance: none;
@@ -453,11 +450,11 @@ body {
     font-size: 16px;  /* 字体必须比盒子小，icon 才会居中且不拥挤 */
     line-height: 1;   /* 消除文字默认行高，防止垂直偏移 */
     font-weight: 300; /*稍微细一点点更像现代App */
-    color: #dedede;
+    color: #818181;
     
     /* --- 外观样式 --- */
-    border: 1px solid #ffffff81;
-    background: rgba(236, 236, 236, 0.2);
+    border: 1px solid #71717181;
+    background: rgba(236, 236, 236, 0.568);
     
     /* --- 5. iOS 专用修复 (防止苹果手机加默认按钮样式) --- */
     -webkit-appearance: none;
@@ -480,12 +477,12 @@ body {
     height: 88vh;
     max-height: 820px;
     margin: auto;              /* 上下左右自动居中 */
-    background: rgba(52, 52, 52, 0.72);     /* 亮色壁纸推荐 0.72 */
+    background: rgba(255, 255, 255, 0.72);     /* 亮色壁纸推荐 0.72 */
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-radius: 15px;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(115, 115, 115, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -514,7 +511,7 @@ body {
     display: flex;
     align-items: center;
     padding: 12px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     transition: background 0.2s ease;
     cursor: pointer;
 }
@@ -562,14 +559,14 @@ body {
 .contact-info h3 {
     margin: 0 0 5px 0;
     font-size: 16.5px;
-    color: #ffffffd8;
+    color: #222;
     font-weight: 600;
 }
 
 .contact-info p {
     margin: 0;
     font-size: 13.5px;
-    color: #cdcdcdc8;
+    color: #777;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1115,5 +1112,269 @@ button#gist-find{
 .gist-status.success { color: #28a745; }
 .gist-status.error   { color: #dc3545; }
 
+/* ============================================== */
+/* PART 3: 夜间模式 (Dark Mode) */
+/* ============================================== */
+
+/* 1. 变量重写：当 body 有 dark-mode 类时，覆盖原有变量 */
+body.dark-mode {
+    --primary-color: #505050;
+    --background-color: #2b2b2b; /* 增加一个深色底色，防止壁纸加载前刺眼 */
+    
+    /* 将你的 night- 变量映射回标准变量名，这样原来的气泡样式就能自动变色 */
+    --text-color: #ffffff; 
+    --message-bg-user: #d3ff9ed8;
+    --message-bg-ai: #3c3c3cd0;
+    --message-border-user: #88a65d;
+    --message-border-ai: #737373;
+    
+    --btn-color: #3a3a3a;          /* 按钮深色背景 */
+    --btn-border-color: #555555;   /* 按钮深色边框 */
+    
+    /* 修正字体颜色 */
+    color: #ffffff;
+}
+
+/* 2. 具体的样式覆盖 (Scoped Styles) */
+
+/* 设置弹窗在夜间模式下的背景色 */
+body.dark-mode .modal.glass-panel,
+body.dark-mode #contact-list-wrapper {
+    background: rgba(52, 52, 52, 0.85); /* 深灰色毛玻璃 */
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+body.dark-mode .settings-title,
+body.dark-mode .section-title, 
+body.dark-mode .settings-section-title,
+body.dark-mode h2,
+body.dark-mode h3 {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .api-label,
+body.dark-mode .input-label,
+body.dark-mode .input-group label {
+    color: #b0b0b0;
+}
+
+/* 输入框在夜间模式的通用样式 */
+body.dark-mode .setting-input,
+body.dark-mode #gist-id-input,
+body.dark-mode textarea {
+    background: #444;
+    border-color: #555;
+    color: #fff;
+}
+
+body.dark-mode .main-option {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ddd;
+}
+
+/* --- 你提供的特定组件样式重写 --- */
+
+/* Header */
+body.dark-mode .app-header {
+    background: rgba(57, 57, 57, 0.8);
+    border-bottom: 1px solid rgba(126, 126, 126, 0.7);
+}
+body.dark-mode .app-header h1 {
+    color: rgba(255, 255, 255, 0.9);
+}
+body.dark-mode .app-header p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Footer */
+body.dark-mode .app-footer {
+    background: rgba(79, 79, 79, 0.8);
+    border-top: 1px solid rgba(126, 126, 126, 0.7);
+}
+
+/* 输入框区域 */
+body.dark-mode #task-input {
+    border: 1px solid #9d9d9d; /* 稍微加深一点 */
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.25) !important; /* 深色半透明背景 */
+}
+body.dark-mode #task-input:focus {
+    border: 2px solid #9d9d9d;
+    background: rgba(0, 0, 0, 0.25) !important;
+}
+body.dark-mode #task-input::placeholder {
+    color: #bdbdbd;
+}
+
+/* 按钮区域 */
+body.dark-mode #send-button,
+body.dark-mode #reroll-footer-btn {
+    border: 1px solid rgba(182, 182, 182, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 顶部左右按钮 */
+body.dark-mode .header-icon-btn.right,
+body.dark-mode .header-icon-btn.left {
+    color: #dedede;
+    border: 1px solid #ffffff50;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 通讯录列表 */
+body.dark-mode .contact-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+body.dark-mode .contact-item:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+body.dark-mode .contact-info h3 {
+    color: #ffffffd8;
+}
+body.dark-mode .contact-info p {
+    color: #cdcdcdc8;
+}
+
+/* ============================================== */
+/* PART 4: 夜间模式补全 (针对你刚提到的元素) */
+/* ============================================== */
+
+/* 1. 模型标签文字颜色变浅 */
+body.dark-mode .api-label2 {
+    color: #b0b0b0;
+}
+
+/* 2. GitHub Gist 卡片背景变深 */
+body.dark-mode .gist-sync-card {
+    background: rgba(255, 255, 255, 0.05); /* 极淡的透明白，显出高级灰 */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: none; /* 去掉阴影，扁平化 */
+}
+
+/* 3. 核心按钮 (Gist主按钮 & 获取模型按钮) 
+   夜间模式下改成半透明磨砂质感，文字变白 */
+body.dark-mode .gist-btn.primary,
+body.dark-mode #fetch-models-btn.fetch-models-btn {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text) !important;
+}
+
+/* 鼠标悬停时稍微亮一点 */
+body.dark-mode .gist-btn.primary:hover,
+body.dark-mode #fetch-models-btn.fetch-models-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* 4. 弹窗里的普通输入框和文本域 (补全) */
+body.dark-mode .input-group input, 
+body.dark-mode .input-group textarea {
+    background: rgba(0, 0, 0, 0.25); /* 深色半透明底 */
+    border-color: #555;
+    color: #fff;
+}
+body.dark-mode .input-group input:focus, 
+body.dark-mode .input-group textarea:focus {
+    border-color: #888;
+    background: rgba(0, 0, 0, 0.4);
+}
 
 
+/* ============================================== */
+/* PART 5: 气泡字体颜色独立设置 (重点！) */
+/* ============================================== */
+
+/* 用户气泡：夜间模式下，气泡是亮绿色的，所以文字要用深色 (#232323) */
+body.dark-mode .message-wrapper.user .message-bubble {
+    color: #232323; 
+    /* 如果气泡内有链接，也要强制变黑，防止看不清 */
+}
+body.dark-mode .message-wrapper.user .message-bubble a {
+    color: #0044cc; /* 链接用深蓝色，对比度更高 */
+}
+
+/* AI 气泡：夜间模式下，气泡是深灰色的，所以文字要用白色 */
+body.dark-mode .message-wrapper.ai .message-bubble {
+    color: #ffffff;
+}
+body.dark-mode .message-wrapper.ai .message-bubble a {
+    color: #8ab4f8; /* 链接用浅蓝色 */
+}
+
+/* 顺便修复一下 Markdown 代码块在夜间模式的背景 */
+body.dark-mode pre, 
+body.dark-mode code {
+    background: rgba(0, 0, 0, 0.3);
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+
+/* ============================================== */
+/* PART 6: 查找按钮 (Gist Find) 夜间模式适配 */
+/* ============================================== */
+
+body.dark-mode button#gist-find {
+    /* 背景改为半透明白色，透出底下的深色，显得更有质感 */
+    background: rgba(255, 255, 255, 0.15); 
+    
+    /* 文字强制变白，确保清晰可见 */
+    color: #ffffff; 
+    
+    /* 边框稍微亮一点，增加轮廓感 */
+    border: 2px solid var(--primary-btn-text);
+}
+
+/* 鼠标悬停时的效果 */
+body.dark-mode button#gist-find:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+body.dark-mode .gist-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s 
+ease;
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9
+}
+
+
+body.dark-mode button#main-cancel {
+    background: var(--btn-color);
+    color: #ffffff;
+}
+
+body.dark-mode button#main-confirm {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text);
+}
+
+body.dark-mode button#modal-save {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text);
+}
+
+body.dark-mode button.small-btn {
+    padding: 10px 62px;
+    font-size: 12px;
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9;
+    cursor: pointer;
+}
+
+body.dark-mode button#modal-cancel {
+    background: var(--btn-color);
+    color: #ffffff;
+}

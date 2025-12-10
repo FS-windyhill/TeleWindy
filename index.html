@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    <!-- 新增：壁纸选择弹窗（复用 modal-overlay 的结构，JS 里会切换内容） -->
+    <!-- 新增：主设置（复用 modal-overlay 的结构，JS 里会切换内容） -->
     <div id="main-modal" class="modal-overlay hidden">
         <div class="modal glass-panel" style="max-height: 90vh; overflow-y: auto;">
             <!-- 标题 -->
@@ -171,6 +171,28 @@
 
                 <div id="wallpaper-preview" class="wallpaper-preview hidden" style="margin: 10px auto; text-align: center;">
                     <img id="wallpaper-preview-img" src="" alt="预览" style="display: block; max-width: 100%; max-height: 200px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                </div>
+            </div>
+
+            <!-- ============ 2. [新增] 显示模式切换 ============ -->
+            <h3 class="settings-section-title">显示模式</h3>
+            <div class="main-options">
+                <!-- 日间模式按钮 -->
+                <div class="main-option" onclick="setTheme('light')" style="justify-content: space-between;">
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-size: 18px; margin-right: 10px;">☀️</span>
+                        <span>日间模式</span>
+                    </div>
+                    <input type="radio" name="theme-select" id="theme-light" checked style="accent-color: #666;">
+                </div>
+
+                <!-- 夜间模式按钮 -->
+                <div class="main-option" onclick="setTheme('dark')" style="justify-content: space-between;">
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-size: 18px; margin-right: 10px;">🌙</span>
+                        <span>夜间模式</span>
+                    </div>
+                    <input type="radio" name="theme-select" id="theme-dark" style="accent-color: #666;">
                 </div>
             </div>
 

@@ -1039,3 +1039,37 @@ document.getElementById('gist-restore').addEventListener('click', async () => {
     }
 });
 
+
+// 12.10小工具
+// --- 主题切换逻辑 ---
+
+// 1. 初始化：页面加载时检查本地存储
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('appTheme') || 'light'; // 默认为日间
+    setTheme(savedTheme);
+});
+
+// 2. 切换主题函数
+function setTheme(theme) {
+    const body = document.body;
+    const lightRadio = document.getElementById('theme-light');
+    const darkRadio = document.getElementById('theme-dark');
+
+    if (theme === 'dark') {
+        // 激活夜间模式
+        body.classList.add('dark-mode');
+        if(darkRadio) darkRadio.checked = true;
+        if(lightRadio) lightRadio.checked = false;
+    } else {
+        // 激活日间模式 (移除 class)
+        body.classList.remove('dark-mode');
+        if(lightRadio) lightRadio.checked = true;
+        if(darkRadio) darkRadio.checked = false;
+    }
+
+    // 保存到本地存储
+    localStorage.setItem('appTheme', theme);
+}
+
+
+
