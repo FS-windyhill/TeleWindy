@@ -1,11 +1,12 @@
 :root {
     --primary-color: #505050;
     --background-color: #ffffff;
-    --text-color: #333;
-    --message-bg-user: #d1ffbed8;
-    --message-bg-ai: #ffffffd0;
-    --message-border-user: #b3c5a3;
-    --message-border-ai: #e8e8e8;    
+    --text-color-user: #232323;      /* 用户消息黑色 */
+    --text-color-ai: #ffffff;        /* AI 消息白色 */
+    --message-bg-user: #aff98fd8;
+    --message-bg-ai: #363636d0;
+    --message-border-user: #7fa65d;
+    --message-border-ai: #595959;    
     --border-radius: 15px;
     --box-shadow: 0 3px 3px rgba(0,0,0,0.08);
     --primary-btn-color: rgba(241, 241, 255, 0.99);
@@ -38,10 +39,10 @@ body {
 .app-header {
     position: relative;
     padding: 12px 24px;
-    border-bottom: 1px solid rgba(220,220,220,0.9);
+    border-bottom: 1px solid rgba(97, 97, 97, 0.9);
     text-align: center;
     flex-shrink: 0;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(57, 57, 57, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
 }
@@ -50,13 +51,13 @@ body {
 .app-header h1 {
     margin: 0;
     font-size: 1.1em;
-    color: var(--primary-color);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .app-header p {
     margin: 2px 0 0;
     font-size: 0.8em;
-    color: #666;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 
@@ -80,26 +81,14 @@ body {
     word-wrap: break-word;
 }
 
-.message.user {
-    background-color: var(--message-bg-user);
-    color: var(--text-color);
-    align-self: flex-end;
-}
-
-.message.ai {
-    background-color: var(--message-bg-ai);
-    color: var(--text-color);
-    align-self: flex-start;
-}
-
 .app-footer {
     flex-shrink: 0;   /* 输入框永远贴底 */
     /* 你原来的毛玻璃样式也保留 */
     padding: 8px 16px;
-    border-top: 1px solid rgba(220,220,220,0.9);
+    border-top: 1px solid rgba(71, 71, 71, 0.9);
     display: flex;
     gap: 9px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(31, 31, 31, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
     border-radius: 0;
@@ -111,7 +100,7 @@ body {
     padding: 6px 16px; 
     border: 1px solid #ccc;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.6) !important;
+    background: rgba(255, 255, 255, 0.3);
 
     /* --- 解决问题 1: 去掉右下角下拉标 --- */
     resize: none; 
@@ -134,15 +123,15 @@ body {
 
 #task-input:focus {
     outline: none;
-    border-color: var(--primary-color);
-    background: rgba(255, 255, 255, 0.88) !important;
+    border-color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.3) !important;
 }
 
 #send-button {
     padding: 5px 12px;
-    border:1px solid rgba(127, 127, 127, 0.816);
-    background: rgba(251, 251, 251, 0.5);
-    color: rgb(131, 131, 131);
+    border:1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(251, 251, 251, 0.2);
+    color: rgba(255, 255, 255, 0.8);
     border-radius: 8px;
     font-size: 1em;
     cursor: pointer;
@@ -151,14 +140,14 @@ body {
 
 #reroll-footer-btn {
     padding: 5px 12px;
-    border:1px solid rgba(127, 127, 127, 0.816);
+    border:1px solid rgba(255, 255, 255, 0.8);
     cursor: pointer;
     border-radius: 8px;
     font-size: 1em;
     flex-shrink: 0;
     transition: background-color 0.2s;
-    background: rgba(251, 251, 251, 0.5);
-    color: rgb(131, 131, 131);
+    background: rgba(251, 251, 251, 0.2);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 
@@ -244,12 +233,14 @@ body {
 .message-wrapper.user .message-bubble {
     background: var(--message-bg-user);
     border: 0.7px solid var(--message-border-user);
+    color: var(--text-color-user);
     border-top-right-radius: 3px;
 }
 
 .message-wrapper.ai .message-bubble {
     background: var(--message-bg-ai);
     border: 1.3px solid var(--message-border-ai);
+    color: var(--text-color-ai);
     border-top-left-radius: 3px;
 }
 
@@ -298,17 +289,6 @@ body {
 }
 
 /* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
-.app-header {
-    flex-shrink: 0;              /* 顶栏不被压缩 */
-    /* 你原来的毛玻璃样式全部保留，超级好看 */
-    padding: 12px 20px;
-    border-bottom: 1px solid rgba(220,220,220,0.9);
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(10px) saturate(180%);
-    border-radius: 0;
-}
-
 #chat-window {
     flex: 1;                     /* 中间聊天区域吃掉所有剩余空间 */
     overflow-y: auto;            /* 只有这里能滚动 */
