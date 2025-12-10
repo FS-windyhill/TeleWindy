@@ -649,7 +649,10 @@ body {
     background: #ff3a3a; color: #ffffff; border: 1px solid rgb(255, 0, 0);
     padding: 5px; border-radius: 8px; font-size: 13px; cursor: pointer; width: 100%;
 }
-.danger-btn.outline {background: #ffffff; color: #ff0b0b; border: 1px solid rgb(255, 0, 0); }
+.danger-btn.outline {
+    background: rgba(255, 80, 80, 0.1);
+    color: #d32f2f;
+    border: 1px solid rgba(255, 80, 80, 0.9);}
 
 /* ============= 新增样式：头像上传预览 ============= */
 .avatar-upload-group .avatar-preview-wrapper {
@@ -906,9 +909,9 @@ button#del-preset-btn.icon-btn.danger{
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: #ffffff;
-    color: #ff0000;
-    border: 0.7px solid #ff0000
+    background: rgba(255, 80, 80, 0.1);
+    color: #d32f2f;
+    border: 1px solid rgba(255, 80, 80, 0.9);
 
 }
 
@@ -1274,6 +1277,447 @@ button#gist-find{
 }
 
 
+/* ============= 世界书整体容器 ============= */
+/* ============= 世界书整体容器 ============= */
+/* ============= 世界书整体容器 ============= */
+
+
+
+/* ============= 世界书 (World Book) 专属样式 ============= */
+
+/* 布局容器 */
+.wi-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 15px;
+    padding: 5px; /* 给边缘一点呼吸空间 */
+    box-sizing: border-box;
+}
+
+/* 通用玻璃卡片风格 - 继承你的设计语言 */
+.glass-card {
+    background: rgba(255, 255, 255, 0.65); /* 比弹窗稍微透一点，因为在底层 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+}
+
+/* 顶部工具栏 */
+.wi-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+}
+
+.wi-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wi-toolbar-group.main-select {
+    flex: 1;
+    min-width: 200px;
+}
+
+.wi-toolbar-group label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #444;
+    white-space: nowrap;
+}
+
+.wi-toolbar-divider.vertical {
+    width: 1px;
+    height: 24px;
+    background: rgba(0,0,0,0.1);
+    margin: 0 4px;
+}
+
+/* 主体分栏布局 */
+.wi-main-layout {
+    display: flex;
+    flex: 1;
+    gap: 15px;
+    overflow: hidden; /* 防止溢出 */
+}
+
+/* 左侧列表栏 */
+.wi-sidebar {
+    width: 220px; /*稍微加宽一点更美观*/
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+}
+
+.wi-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.wi-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px; /* 给滚动条留位置 */
+}
+
+/* 列表里的每一项 (JS动态生成的div建议加个class，或者用通用选择器) */
+#wi-list-container > div {
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: all 0.2s;
+}
+
+#wi-list-container > div:hover {
+    background: rgba(230, 230, 230, 0.9);
+}
+
+#wi-list-container > div.active {
+    background: var(--primary-btn-color, #e0e0e0); /* 使用你的主色变量 */
+    color: var(--primary-btn-text);
+    font-weight: 600;
+    border-color: rgba(0,0,0,0.1);
+}
+
+/* 右侧编辑区 */
+.wi-editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* 编辑区内部的小板块 */
+.wi-section-card {
+    background: rgba(0, 0, 0, 0.01);
+    border: 1px solid var(--primary-btn-text);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.wi-section-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #444;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sub-text {
+    font-size: 12px;
+    color: #888;
+    font-weight: normal;
+}
+
+.wi-edit-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.wi-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 复选框美化 */
+.wi-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    user-select: none;
+}
+.wi-checkbox-wrapper input {
+    width: 16px;
+    height: 16px;
+    accent-color: #666;
+    cursor: pointer;
+}
+
+/* 表单组 */
+.wi-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.wi-form-group.flex-grow {
+    flex: 1;
+}
+.wi-form-group label {
+    font-size: 13px;
+    color: #555;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+/* 输入控件 (继承你的 .setting-input 但做微调) */
+.wi-select {
+    width: 100%;
+    cursor: pointer;
+}
+.wi-textarea {
+    flex: 1;
+    min-height: 150px;
+    resize: none;
+    font-family: 'Consolas', 'Monaco', monospace; /* 代码字体 */
+    line-height: 1.5;
+    font-size: 13px;
+}
+
+/* 按钮样式体系 */
+.wi-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 1. 主要按钮 (类似你的上传按钮) */
+.wi-btn.primary {
+    background: var(--primary-btn-color);
+    color: var(--primary-btn-text);
+    border: 0.7px solid var(--primary-btn-text);
+}
+.wi-btn.primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* 2. 次要按钮 (类似你的保存预设按钮) */
+.wi-btn.secondary {
+    background: var(--btn-color);
+    color: #333;
+    border: 0.7px solid var(--btn-border-color);
+}
+.wi-btn.secondary:hover {
+    background: #f7f7f7;
+    border-color: #999;
+}
+
+/* 3. 危险按钮 */
+.wi-btn.danger {
+    background: rgba(255, 80, 80, 0.1);
+    color: #d32f2f;
+    border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+
+/* 4. 纯图标/小按钮 */
+.wi-btn.icon-only {
+    padding: 2px 10px;
+    font-size: 18px;
+    line-height: 1;
+    background: rgba(0,0,0,0.05);
+    color: #555;
+}
+.wi-btn.icon-only:hover {
+    background: rgba(0,0,0,0.1);
+    color: #000;
+}
+
+/* 底部操作区 */
+.wi-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 5px;
+}
+
+.wi-btn.large {
+    padding: 10px 24px;
+    font-size: 14px;
+}
+
+/* 滚动条美化 (Webkit) */
+.wi-list-scroll::-webkit-scrollbar,
+.wi-editor::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.wi-list-scroll::-webkit-scrollbar-thumb,
+.wi-editor::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+}
+.wi-list-scroll::-webkit-scrollbar-thumb:hover,
+.wi-editor::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.2);
+}
+
+/* ============= 修复溢出问题 (Fix Overflow) ============= */
+
+/* 1. 强制所有 WI 开头的元素使用这种计算方式：宽度包含了内边距 */
+[class^="wi-"], [id^="wi-"] {
+    box-sizing: border-box; 
+}
+
+/* 2. 针对 .glass-card 也要强制加上，确保万无一失 */
+.glass-card {
+    box-sizing: border-box;
+    max-width: 100%; /* 防止意外撑大 */
+}
+
+
+/* ============= 移动端适配 (Responsive Design) ============= */
+
+@media (max-width: 768px) {
+    
+    /* 1. 外层容器：减少边缘留白，利用每一寸屏幕 */
+    .wi-container {
+        padding: 4px;
+        gap: 8px;
+        height: auto; /* 取消固定高度，允许页面滚动 */
+        overflow-y: auto; /* 确保整体可滚动 */
+    }
+
+    /* 2. 顶部工具栏：从横排变竖排，按钮网格化 */
+    .wi-toolbar {
+        flex-direction: column;
+        align-items: stretch; /* 让子元素占满宽度 */
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .wi-toolbar-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* 隐藏竖分割线，手机上不需要 */
+    .wi-toolbar-divider {
+        display: none;
+    }
+
+    /* 选择框组：上下排列 */
+    .wi-toolbar-group.main-select {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    /* 书本操作按钮组：使用网格布局，一行三个，整齐漂亮 */
+    .wi-toolbar-group.actions,
+    .wi-toolbar-group.global-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr; /* 三等分 */
+        gap: 8px;
+    }
+    
+    /* 按钮样式微调：居中文字 */
+    .wi-toolbar button {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 4px; /* 稍微减小内边距防止文字换行 */
+        font-size: 12px;
+    }
+
+    /* 3. 主布局：由左右变上下 */
+    .wi-main-layout {
+        flex-direction: column;
+        overflow: visible; /* 允许内容撑开高度 */
+    }
+
+    /* 4. 左侧列表：变成上方的一个短列表窗 */
+    .wi-sidebar {
+        width: 100%; /* 占满宽度 */
+        height: 220px; /* 固定高度，避免太长占满屏幕 */
+        flex: none; /* 禁止自动伸缩 */
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* 列表项稍微加大，方便手指点击 */
+    #wi-list-container > div {
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+
+    /* 5. 右侧编辑区：在下方铺开 */
+    .wi-editor {
+        width: 100%;
+        flex: none;
+        height: auto; /* 高度随内容自适应 */
+        min-height: 500px; /* 保证有足够编辑空间 */
+        padding: 16px;
+    }
+
+    /* 6. 输入框优化：防止iOS输入时自动放大 */
+    .setting-input, 
+    .wi-textarea,
+    input[type="text"] {
+        font-size: 16px !important; /* iOS小于16px会强制放大页面 */
+    }
+
+    /* 编辑区底部按钮：固定在底部或加大 */
+    .wi-form-actions {
+        display: grid;
+        grid-template-columns: 1fr 2fr; /* 删除键占1份，保存键占2份 */
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .wi-btn.large {
+        width: 100%;
+        padding: 12px 0;
+        font-size: 15px;
+    }
+
+    /* 宽度修正 */
+    .wi-sidebar, 
+    .wi-editor {
+        width: 100% !important; /* 强制占满父容器 */
+        max-width: 100vw;       /* 绝不超过屏幕宽度 */
+        margin-right: 0;
+        margin-left: 0;
+    }
+    
+    /* 修正容器的内边距计算 */
+    .wi-container {
+        width: 100%;
+        overflow-x: hidden; /* 彻底禁止横向滚动条 */
+    }
+}
+
+
+
+
+
+
 
 
 /* ============================================== */
@@ -1571,6 +2015,72 @@ body.dark-mode .tab-item:hover:not(.active) {
     color: #fefefe;
 }
 
+
+body.dark-mode .wi-btn.secondary{
+    background: var(--btn-color);
+    color: #ffffff;
+    border: 0.7px solid #a9a9a9;
+}
+
+body.dark-mode .glass-card{
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-mode .wi-toolbar-group label{
+    color: #ffffff;
+}
+
+body.dark-mode .wi-btn.icon-only{
+    padding: 2px 10px;
+    font-size: 18px;
+    line-height: 1;
+    background: rgba(0, 0, 0, 0.05);
+    color: #ffffff;
+}
+
+body.dark-mode .wi-sidebar-header{
+    color: #ffffff;
+}
+
+body.dark-mode .wi-section-title{
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.dark-mode .wi-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #ffffff;
+    cursor: pointer;
+    user-select: none;
+}
+
+body.dark-mode .wi-form-group label {
+    font-size: 13px;
+    color: #ffffff;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+body.dark-mode .wi-btn.danger {
+    background: rgba(255, 33, 33, 0.5);
+    color: #ffcaca;
+    border: 1px solid rgba(255, 80, 80, 0.9);
+}
+
+body.dark-mode .wi-btn.primary {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 2px solid var(--primary-btn-text) !important;
+}
+
 /* ============================================== */
 /* PART 7: 夜间模式下的手机适配（< 640px）      */
 /* ============================================== */
@@ -1621,4 +2131,5 @@ body.dark-mode .tab-item:hover:not(.active) {
         padding: 20px 18px;
         background: rgba(45, 45, 45, 0.95);
     }
+
 }

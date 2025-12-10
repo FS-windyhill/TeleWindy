@@ -1,11 +1,12 @@
 /**
- * TeleWindy Core Logic - Refactored
+ * TeleWindy Core Logic - Refactored with World Book (Categories)
  * 结构说明：
  * 1. CONFIG & STATE: 全局配置常量与运行时状态
  * 2. STORAGE SERVICE: 负责数据的持久化 (LocalStorage)
- * 3. API SERVICE: 负责与 LLM 通信及模型拉取
- * 4. UI RENDERER: 负责界面的 DOM 操作与渲染
- * 5. APP CONTROLLER: 核心业务逻辑 (事件绑定、初始化)
+ * 3. WORLD INFO ENGINE: ★★★ 重构：基于“书”的世界书核心逻辑
+ * 4. API SERVICE: 负责与 LLM 通信及模型拉取
+ * 5. UI RENDERER: 负责界面的 DOM 操作与渲染
+ * 6. APP CONTROLLER: 核心业务逻辑 (事件绑定、初始化)
  */
 
 
@@ -16,6 +17,7 @@
 const CONFIG = {
     STORAGE_KEY: 'teleWindy_char_data_v1',
     SETTINGS_KEY: 'teleWindy_settings_v1', 
+    WORLD_INFO_KEY: 'teleWindy_world_info_v2', // ★★★ Key升级到v2以示区别
     GIST_ID_KEY: 'telewindy-gist-id',
     DEFAULT: {
         API_URL: 'https://api.siliconflow.cn/v1/chat/completions',
@@ -25,7 +27,7 @@ const CONFIG = {
         USER_AVATAR: 'user.jpg',
         GIST_TOKEN: '',
         THEME: 'light',
-        API_PRESETS: [] // ★★★ 新增：API 预设列表
+        API_PRESETS: [] 
     },
     SYSTEM_PROMPT: `
 请完全代入角色设定，以该角色的语气和思考方式，与用户交流。
@@ -40,7 +42,9 @@ const CONFIG = {
 // 运行时状态
 const STATE = {
     contacts: [],
+    worldInfoBooks: [], // ★★★ 改名：这里存放“书”的数组
     currentContactId: null,
+    currentBookId: null, // ★★★ 新增：当前正在编辑哪本书
     settings: {}, 
     isTyping: false
 };
@@ -61,7 +65,6 @@ const Storage = {
             localStorage.removeItem('appTheme');
         }
 
-        // 合并默认值 (确保 API_PRESETS 存在)
         STATE.settings = { ...CONFIG.DEFAULT, ...loadedSettings };
         if (!Array.isArray(STATE.settings.API_PRESETS)) {
             STATE.settings.API_PRESETS = [];
@@ -91,6 +94,53 @@ const Storage = {
                 history: []
             });
         }
+
+        // 3. ★★★ 加载世界书 (带数据迁移逻辑)
+        // 尝试加载新版数据
+        const wiRawV2 = localStorage.getItem(CONFIG.WORLD_INFO_KEY);
+        
+        if (wiRawV2) {
+            STATE.worldInfoBooks = JSON.parse(wiRawV2);
+        } else {
+            // 如果没有新版数据，检查是否有旧版数据 (v1)
+            const wiRawV1 = localStorage.getItem('teleWindy_world_info_v1');
+            STATE.worldInfoBooks = [];
+            
+            if (wiRawV1) {
+                try {
+                    const oldEntries = JSON.parse(wiRawV1);
+                    if (Array.isArray(oldEntries) && oldEntries.length > 0) {
+                        // 迁移：将旧的散乱条目打包成一本“默认书”
+                        console.log("Detecting old WI format, migrating...");
+                        const defaultBook = {
+                            id: 'book_default_' + Date.now(),
+                            name: '默认世界书 (旧数据迁移)',
+                            characterId: '', // 默认全局
+                            entries: oldEntries
+                        };
+                        STATE.worldInfoBooks.push(defaultBook);
+                        // 保存新版
+                        this.saveWorldInfo();
+                        // (可选) 删除旧版 key，或者保留作为备份
+                    }
+                } catch (e) {
+                    console.error("Migration failed", e);
+                }
+            }
+        }
+
+        // 确保至少有一本书，方便用户操作
+        if (STATE.worldInfoBooks.length === 0) {
+            STATE.worldInfoBooks.push({
+                id: 'book_' + Date.now(),
+                name: '新建世界书',
+                characterId: '',
+                entries: []
+            });
+        }
+        
+        // 默认选中第一本
+        STATE.currentBookId = STATE.worldInfoBooks[0].id;
     },
 
     saveContacts() {
@@ -99,6 +149,11 @@ const Storage = {
 
     saveSettings() {
         localStorage.setItem(CONFIG.SETTINGS_KEY, JSON.stringify(STATE.settings));
+    },
+
+    // ★★★ 新增：保存世界书
+    saveWorldInfo() {
+        localStorage.setItem(CONFIG.WORLD_INFO_KEY, JSON.stringify(STATE.worldInfoBooks));
     },
     
     // 导出备份逻辑
@@ -147,7 +202,130 @@ const Storage = {
 };
 
 // =========================================
-// 3. API SERVICE (LLM通信)
+// 3. WORLD INFO ENGINE (世界书逻辑) ★★★ 重写
+// =========================================
+const WorldInfoEngine = {
+    // 解析 ST 格式的 JSON，并返回一个 Book 对象
+    importFromST(jsonString, fileName) {
+        try {
+            const data = JSON.parse(jsonString);
+            const entriesObj = data.entries || {}; 
+            const newEntries = [];
+
+            // ST 的 entries 通常是一个对象，key 是数字 "0", "1" 等
+            Object.values(entriesObj).forEach(entry => {
+                // 提取核心字段
+                newEntries.push({
+                    uid: Date.now() + Math.random().toString(36).substr(2, 9),
+                    keys: entry.key || [], 
+                    content: entry.content || '',
+                    constant: !!entry.constant, 
+                    comment: entry.comment || '', 
+                    // characterId 不再需要存入 entry，由 Book 统一管理
+                });
+            });
+            
+            // 创建一个新的 Book 对象
+            const bookName = fileName ? fileName.replace('.json', '') : ('导入世界书 ' + new Date().toLocaleTimeString());
+            
+            return {
+                id: 'book_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                name: bookName,
+                characterId: '', // 默认导入为全局，用户可在UI修改
+                entries: newEntries
+            };
+
+        } catch (e) {
+            console.error("World Info Import Failed:", e);
+            throw new Error("格式解析失败，请确保是 SillyTavern 导出的 .json 文件");
+        }
+    },
+
+    // 导出当前书为 ST 格式 JSON
+    exportToST(book) {
+        if (!book) return null;
+        
+        const exportObj = { entries: {} };
+        book.entries.forEach((entry, index) => {
+            exportObj.entries[index] = {
+                uid: index, // ST使用数字索引
+                key: entry.keys,
+                keysecondary: [],
+                comment: entry.comment,
+                content: entry.content,
+                constant: entry.constant,
+                selective: true,
+                order: 100,
+                position: 0,
+                disable: false,
+                excludeRecursion: false,
+                probability: 100,
+                useProbability: true
+                // 其他 ST 字段可以忽略或设默认值
+            };
+        });
+        
+        return JSON.stringify(exportObj, null, 2);
+    },
+
+    // 核心扫描逻辑：遍历所有书 -> 检查书的启用状态 -> 遍历书内条目
+    scan(userText, history, currentContactId, currentContactName) {
+        if (!STATE.worldInfoBooks || STATE.worldInfoBooks.length === 0) return null;
+
+        // ================= 修改开始 =================
+        
+        // 1. 准备扫描文本：仅限【当前用户输入】 + 【上一条AI回复】
+        // history 在 handleSend 中被传入时，已经包含了刚才用户发送的那条
+        // 所以 slice(-2) 拿到的就是 [AI的上一条, 用户的当前条]
+        const relevantHistory = history.slice(-2); 
+        const contextText = (userText + '\n' + relevantHistory.map(m => m.content).join('\n')).toLowerCase();
+
+        // ================= 修改结束 =================
+        
+        const triggeredContent = [];
+
+        // 1. 遍历所有书 (大分类)
+        STATE.worldInfoBooks.forEach(book => {
+            // ... (下面的代码保持不变) ...
+            // 2. 检查书是否适用于当前角色
+            const isGlobalBook = !book.characterId || book.characterId === "";
+            const isBoundBook = book.characterId === currentContactId;
+            
+            if (!isGlobalBook && !isBoundBook) {
+                return; // 跳过这本书
+            }
+
+            // 3. 遍历这本书里的条目
+            book.entries.forEach(entry => {
+                let triggered = false;
+
+                if (entry.constant) {
+                    triggered = true;
+                } else if (entry.keys && Array.isArray(entry.keys)) {
+                    // 只要有一个 key 存在于 contextText (即最新2条) 中
+                    triggered = entry.keys.some(k => {
+                        const keyLower = k.toLowerCase().trim();
+                        // 增加了对空 key 的过滤，防止空字符串匹配所有
+                        return keyLower && contextText.includes(keyLower);
+                    });
+                }
+
+                if (triggered && entry.content) {
+                    let finalContent = entry.content
+                        .replace(/\{\{user\}\}/gi, '用户') 
+                        .replace(/\{\{char\}\}/gi, currentContactName || '角色');
+                    triggeredContent.push(finalContent);
+                }
+            });
+        });
+
+        if (triggeredContent.length === 0) return null;
+        return triggeredContent.join('\n\n');
+    }
+};
+
+// =========================================
+// 4. API SERVICE (LLM通信)
 // =========================================
 const API = {
     getProvider(url) {
@@ -208,7 +386,6 @@ const API = {
             });
         }
 
-        //这个不要删掉哦！！！！！
         console.log(`[${provider}] Sending...`, JSON.parse(options.body));
 
         const response = await fetch(fetchUrl, options);
@@ -226,7 +403,7 @@ const API = {
 };
 
 // =========================================
-// 4. CLOUD SYNC (Gist 同步服务)
+// 5. CLOUD SYNC (Gist 同步服务)
 // =========================================
 const CloudSync = {
     els: {
@@ -388,8 +565,8 @@ const CloudSync = {
 
             if (backupData && backupData.data) {
                 Storage.importFromBackup(backupData.data);
-                this.showStatus('恢复成功！即将刷新...');
-                setTimeout(() => location.reload(), 2000);
+                this.showStatus('恢复成功！3秒后自动刷新页面');
+                setTimeout(() => location.reload(), 3000);
             }
         } catch (e) {
             this.showStatus('恢复出错: ' + e.message, true);
@@ -398,7 +575,7 @@ const CloudSync = {
 };
 
 // =========================================
-// 5. UI RENDERER (DOM 操作)
+// 6. UI RENDERER (DOM 操作)
 // =========================================
 const UI = {
     els: {
@@ -413,6 +590,12 @@ const UI = {
         rerollBtn: document.getElementById('reroll-footer-btn'),
         modalOverlay: document.getElementById('modal-overlay'),
         mainModal: document.getElementById('main-modal'), 
+        
+        // World Info Elements
+        wiModal: document.getElementById('world-info-modal'),
+        wiList: document.getElementById('wi-list-container'),
+        wiBookSelect: document.getElementById('wi-book-select'), // ★★★ 新增：大分类选择
+        wiBookCharSelect: document.getElementById('wi-book-char-select'), // ★★★ 新增：大分类绑定角色
         
         settingUrl: document.getElementById('custom-api-url'),
         settingKey: document.getElementById('custom-api-key'),
@@ -490,6 +673,80 @@ const UI = {
             item.onclick = () => App.enterChat(c.id);
             this.els.contactContainer.appendChild(item);
         });
+    },
+
+    // ★★★ 渲染世界书：大分类下拉框 ★★★
+    renderBookSelect() {
+        if (!this.els.wiBookSelect) return;
+        this.els.wiBookSelect.innerHTML = '';
+        STATE.worldInfoBooks.forEach(book => {
+            const opt = document.createElement('option');
+            opt.value = book.id;
+            opt.innerText = book.name;
+            this.els.wiBookSelect.appendChild(opt);
+        });
+        this.els.wiBookSelect.value = STATE.currentBookId;
+        
+        // 更新当前书的全局绑定状态
+        this.updateCurrentBookSettingsUI();
+    },
+
+    updateCurrentBookSettingsUI() {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (book && this.els.wiBookCharSelect) {
+            this.els.wiBookCharSelect.value = book.characterId || "";
+        }
+    },
+
+    // ★★★ 渲染世界书：条目列表（基于当前书）★★★
+    renderWorldInfoList() {
+        const container = this.els.wiList;
+        if (!container) return;
+        container.innerHTML = '';
+
+        const currentBook = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!currentBook) return;
+
+        currentBook.entries.forEach((entry, index) => {
+            const item = document.createElement('div');
+            item.style.padding = '8px';
+            item.style.borderBottom = '1px solid #eee';
+            item.style.cursor = 'pointer';
+            item.style.fontSize = '14px';
+            
+            // 高亮当前选中的条目
+            if (entry.uid === document.getElementById('wi-edit-uid').value) {
+                item.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                item.style.fontWeight = 'bold';
+            }
+
+            const title = entry.comment || (entry.keys[0] ? entry.keys[0] : '未命名条目');
+            const typeEmoji = entry.constant ? '📌' : '🔎';
+            
+            item.innerText = `${typeEmoji} ${title}`;
+            item.onclick = () => App.loadWorldInfoEntry(entry.uid);
+            container.appendChild(item);
+        });
+    },
+
+    // ★★★ 初始化世界书 Tab 的数据 ★★★
+    initWorldInfoTab() {
+        // 1. 填充书的全局绑定角色下拉框
+        const charSelect = this.els.wiBookCharSelect;
+        if (charSelect) {
+            charSelect.innerHTML = '<option value="">全局 (对所有角色生效)</option>';
+            STATE.contacts.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = c.name;
+                charSelect.appendChild(opt);
+            });
+        }
+        
+        // 2. 渲染大分类，并触发一次列表渲染
+        this.renderBookSelect();
+        this.renderWorldInfoList();
+        App.clearWorldInfoEditor(); 
     },
 
     renderChatHistory(contact) {
@@ -601,9 +858,7 @@ const UI = {
         const containerId = 'api-preset-container';
         let container = document.getElementById(containerId);
 
-       // 核心：无论 HTML 是手写的还是 JS生成的，都要绑定事件和刷新列表
         if (container) {
-            // 绑定事件 (覆盖 onclick 确保生效)
             const saveBtn = document.getElementById('save-preset-btn');
             const delBtn = document.getElementById('del-preset-btn');
             const select = document.getElementById('preset-select');
@@ -612,7 +867,6 @@ const UI = {
             if(delBtn) delBtn.onclick = () => App.handleDeletePreset();
             if(select) select.onchange = (e) => App.handleLoadPreset(e.target.value);
 
-            // 刷新下拉列表数据
             select.innerHTML = '<option value="">-- 选择 API 预设 --</option>';
             if (STATE.settings.API_PRESETS && Array.isArray(STATE.settings.API_PRESETS)) {
                 STATE.settings.API_PRESETS.forEach((p, index) => {
@@ -627,7 +881,7 @@ const UI = {
 };
 
 // =========================================
-// 6. APP CONTROLLER (业务逻辑)
+// 7. APP CONTROLLER (业务逻辑)
 // =========================================
 const App = {
     init() {
@@ -701,18 +955,32 @@ const App = {
             .map(msg => {
                 let content = msg.content || msg;
                 if (msg.role === 'user') {
-                    let time = msg.timestamp || formatTimestamp(); 
-                    return { role: 'user', content: `[${time}] ${content}` };
+                    if(content.startsWith('[Dec')) {
+                        // 兼容旧格式，不做处理
+                    }
+                    return { role: 'user', content: content };
                 } else {
                     return { role: 'assistant', content: content };
                 }
             });
         
+        // ★★★ 世界书注入逻辑 ★★★
+        const worldInfoPrompt = WorldInfoEngine.scan(userText, recentHistory, contact.id, contact.name);
+        
         const messagesToSend = [
             { role: 'system', content: CONFIG.SYSTEM_PROMPT }, 
-            { role: 'system', content: `=== 角色设定 ===\n${contact.prompt}` },
-            ...recentHistory
+            { role: 'system', content: `=== 角色设定 ===\n${contact.prompt}` }
         ];
+
+        if (worldInfoPrompt) {
+            messagesToSend.push({ 
+                role: 'system', 
+                content: `=== 世界知识/环境信息 ===\n${worldInfoPrompt}` 
+            });
+            console.log("【World Info Injected】", worldInfoPrompt);
+        }
+
+        recentHistory.forEach(h => messagesToSend.push(h));
 
         try {
             const aiText = await API.chat(messagesToSend, STATE.settings);
@@ -747,11 +1015,195 @@ const App = {
             document.getElementById('wallpaper-preview').classList.remove('hidden');
         }
 
-        // 渲染 API 预设 UI
         UI.renderPresetMenu();
+        // ★★★ 世界书初始化 ★★★
+        UI.initWorldInfoTab();
     },
 
-    // ★★★ API 预设逻辑 ★★★
+    // --- 世界书相关操作 ---
+
+    // 切换当前书
+    switchWorldInfoBook(bookId) {
+        STATE.currentBookId = bookId;
+        UI.updateCurrentBookSettingsUI();
+        UI.renderWorldInfoList();
+        this.clearWorldInfoEditor();
+    },
+
+    // 绑定当前书的角色
+    bindCurrentBookToChar(charId) {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (book) {
+            book.characterId = charId;
+            Storage.saveWorldInfo();
+            // 不需刷新列表，因为内容没变
+        }
+    },
+
+    loadWorldInfoEntry(uid) {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return;
+
+        const entry = book.entries.find(e => e.uid === uid);
+        if (!entry) return;
+
+        document.getElementById('wi-edit-uid').value = entry.uid;
+        document.getElementById('wi-edit-keys').value = entry.keys.join(', ');
+        document.getElementById('wi-edit-content').value = entry.content;
+        document.getElementById('wi-edit-constant').checked = entry.constant;
+        // 注意：角色绑定现在由书控制，不再由条目控制
+        
+        UI.renderWorldInfoList(); // 刷新高亮
+    },
+
+    saveWorldInfoEntry() {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return alert("请先新建或选择一本世界书");
+
+        const uid = document.getElementById('wi-edit-uid').value;
+        const keysStr = document.getElementById('wi-edit-keys').value;
+        const content = document.getElementById('wi-edit-content').value;
+        const constant = document.getElementById('wi-edit-constant').checked;
+
+        // 处理关键词数组
+        const keys = keysStr.split(/[,，]/).map(k => k.trim()).filter(k => k);
+
+        if (!content && !keys.length) {
+            alert('请至少填写内容或关键词');
+            return;
+        }
+
+        let entry = book.entries.find(e => e.uid === uid);
+        
+        if (entry) {
+            // 更新
+            entry.keys = keys;
+            entry.content = content;
+            entry.constant = constant;
+            if (!entry.comment && keys.length > 0) entry.comment = keys[0];
+        } else {
+            // 新建
+            entry = {
+                uid: Date.now().toString(),
+                keys: keys,
+                content: content,
+                constant: constant,
+                comment: keys[0] || '新建条目'
+            };
+            book.entries.push(entry);
+        }
+
+        Storage.saveWorldInfo();
+        UI.renderWorldInfoList();
+        this.clearWorldInfoEditor();
+        this.loadWorldInfoEntry(entry.uid);
+    },
+
+    deleteWorldInfoEntry() {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return;
+
+        const uid = document.getElementById('wi-edit-uid').value;
+        if (!uid) return;
+        if (confirm('确定删除此条目吗？')) {
+            book.entries = book.entries.filter(e => e.uid !== uid);
+            Storage.saveWorldInfo();
+            this.clearWorldInfoEditor();
+            UI.renderWorldInfoList();
+        }
+    },
+
+    clearWorldInfoEditor() {
+        document.getElementById('wi-edit-uid').value = '';
+        document.getElementById('wi-edit-keys').value = '';
+        document.getElementById('wi-edit-content').value = '';
+        document.getElementById('wi-edit-constant').checked = false;
+        UI.renderWorldInfoList();
+    },
+
+    // ★★★ 大分类（书）的操作 ★★★
+    createNewBook() {
+        const name = prompt("请输入新世界书的名称：", "新世界书");
+        if (name) {
+            const newBook = {
+                id: 'book_' + Date.now(),
+                name: name,
+                characterId: '', // 默认全局
+                entries: []
+            };
+            STATE.worldInfoBooks.push(newBook);
+            STATE.currentBookId = newBook.id;
+            Storage.saveWorldInfo();
+            UI.renderBookSelect();
+            UI.renderWorldInfoList();
+        }
+    },
+
+    renameCurrentBook() {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return;
+        const newName = prompt("重命名世界书：", book.name);
+        if (newName) {
+            book.name = newName;
+            Storage.saveWorldInfo();
+            UI.renderBookSelect();
+        }
+    },
+
+    deleteCurrentBook() {
+        if (STATE.worldInfoBooks.length <= 1) {
+            return alert("至少保留一本世界书");
+        }
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return;
+        
+        if (confirm(`确定要彻底删除整本《${book.name}》吗？\n里面的所有条目都会消失，不可恢复。`)) {
+            STATE.worldInfoBooks = STATE.worldInfoBooks.filter(b => b.id !== STATE.currentBookId);
+            STATE.currentBookId = STATE.worldInfoBooks[0].id; // 切换到第一本
+            Storage.saveWorldInfo();
+            UI.renderBookSelect();
+            UI.renderWorldInfoList();
+        }
+    },
+
+    exportCurrentBook() {
+        const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
+        if (!book) return;
+
+        const jsonStr = WorldInfoEngine.exportToST(book);
+        const blob = new Blob([jsonStr], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${book.name}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+
+    handleImportWorldInfo(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                // 现在 importFromST 返回一个 Book 对象
+                const newBook = WorldInfoEngine.importFromST(e.target.result, file.name);
+                STATE.worldInfoBooks.push(newBook);
+                STATE.currentBookId = newBook.id; // 自动切换到新导入的书
+                
+                Storage.saveWorldInfo();
+                UI.renderBookSelect();
+                UI.renderWorldInfoList();
+                
+                alert(`成功导入《${newBook.name}》，包含 ${newBook.entries.length} 个条目！`);
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+        reader.readAsText(file);
+    },
+
+    // ----------------------
+
     handleSavePreset() {
         const name = prompt("请为当前配置输入一个预设名称 (如: Gemini Pro)");
         if (!name) return;
@@ -767,7 +1219,7 @@ const App = {
 
         STATE.settings.API_PRESETS.push(preset);
         Storage.saveSettings();
-        UI.renderPresetMenu(); // 刷新列表
+        UI.renderPresetMenu(); 
     },
 
     handleLoadPreset(index) {
@@ -820,7 +1272,7 @@ const App = {
         Storage.saveSettings();
         UI.applyAppearance(); 
         UI.els.mainModal.classList.add('hidden');
-        alert(`设置已保存！\nAPI 地址已自动规范化为：\n${rawUrl}`);
+        alert(`设置已保存！`);
     },
 
     bindEvents() {
@@ -867,6 +1319,45 @@ const App = {
         const mainConfirm = document.getElementById('main-confirm');
         if(mainConfirm) mainConfirm.onclick = () => this.saveSettingsFromUI();
         if(UI.els.fetchBtn) UI.els.fetchBtn.onclick = () => this.fetchModelsForUI();
+
+        // --- ★★★ 世界书弹窗事件绑定 ★★★ --
+        const wiClose = document.getElementById('wi-close-btn');
+        if(wiClose) wiClose.onclick = () => UI.els.wiModal.classList.add('hidden');
+        
+        const wiSave = document.getElementById('wi-save-btn');
+        if(wiSave) wiSave.onclick = () => this.saveWorldInfoEntry();
+        
+        const wiDel = document.getElementById('wi-delete-btn');
+        if(wiDel) wiDel.onclick = () => this.deleteWorldInfoEntry();
+
+        const wiAdd = document.getElementById('wi-add-btn');
+        if(wiAdd) wiAdd.onclick = () => this.clearWorldInfoEditor();
+
+        // 书本操作
+        const wiBookSel = document.getElementById('wi-book-select');
+        if(wiBookSel) wiBookSel.onchange = (e) => this.switchWorldInfoBook(e.target.value);
+        
+        const wiBookCharSel = document.getElementById('wi-book-char-select');
+        if(wiBookCharSel) wiBookCharSel.onchange = (e) => this.bindCurrentBookToChar(e.target.value);
+
+        const wiNewBook = document.getElementById('wi-new-book-btn');
+        if(wiNewBook) wiNewBook.onclick = () => this.createNewBook();
+
+        const wiRenameBook = document.getElementById('wi-rename-book-btn');
+        if(wiRenameBook) wiRenameBook.onclick = () => this.renameCurrentBook();
+
+        const wiDelBook = document.getElementById('wi-delete-book-btn');
+        if(wiDelBook) wiDelBook.onclick = () => this.deleteCurrentBook();
+        
+        const wiExportBook = document.getElementById('wi-export-book-btn');
+        if(wiExportBook) wiExportBook.onclick = () => this.exportCurrentBook();
+
+        const wiImportBtn = document.getElementById('wi-import-btn');
+        const wiFileInput = document.getElementById('wi-file-input');
+        if (wiImportBtn && wiFileInput) {
+            wiImportBtn.onclick = () => wiFileInput.click();
+            wiFileInput.onchange = (e) => this.handleImportWorldInfo(e.target.files[0]);
+        }
 
         // 日夜模式
         if (UI.els.themeLight) UI.els.themeLight.addEventListener('change', () => UI.toggleTheme('light'));
@@ -1056,7 +1547,7 @@ const App = {
 };
 
 // =========================================
-// 7. UTILS & EXPORTS (工具与启动)
+// 8. UTILS & EXPORTS (工具与启动)
 // =========================================
 function formatTimestamp() {
     const now = new Date();

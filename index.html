@@ -170,6 +170,10 @@
                 <div class="tab-item" data-target="storage">
                     <span class="tab-text">存储</span>
                 </div>
+                <!-- ★ 新增世界书目录 ★ -->
+                <div class="tab-item" data-target="worldbook">
+                    <span class="tab-text">世界书</span>
+                </div>
             </div>
 
             <!-- ==================== 右侧内容区 ==================== -->
@@ -310,6 +314,103 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ★★★★★ 4. 新增：世界书 (Refactored for Books) ★★★★★ -->
+                <div id="worldbook" class="tab-pane">
+                    <div class="wi-container">
+                        
+                        <!-- 1. 顶部：大分类（书）管理栏 -->
+                        <div class="wi-toolbar glass-card">
+                            <div class="wi-toolbar-group main-select">
+                                <label>当前世界书:</label>
+                                <!-- 选择大分类 -->
+                                <select id="wi-book-select" class="wi-select setting-input">
+                                    <!-- JS会自动填充 -->
+                                </select>
+                            </div>
+
+                            <div class="wi-toolbar-divider"></div>
+
+                            <!-- 针对书的操作 -->
+                            <div class="wi-toolbar-group actions">
+                                <button id="wi-rename-book-btn" class="wi-btn secondary" title="重命名当前书">重命名</button>
+                                <button id="wi-export-book-btn" class="wi-btn secondary" title="导出当前书为JSON">导出</button>
+                                <button id="wi-delete-book-btn" class="wi-btn danger" title="删除整本书">删书</button>
+                            </div>
+                            
+                            <div class="wi-toolbar-divider vertical"></div>
+
+                            <!-- 全局操作 -->
+                            <div class="wi-toolbar-group global-actions">
+                                <button id="wi-new-book-btn" class="wi-btn primary">+ 新建书</button>
+                                <button id="wi-import-btn" class="wi-btn primary">导入ST</button>
+                                <input type="file" id="wi-file-input" accept=".json" style="display: none;">
+                            </div>
+                        </div>
+
+                        <!-- 2. 下方主体：左右分栏 -->
+                        <div class="wi-main-layout">
+                            
+                            <!-- 左栏：当前书内的条目列表 -->
+                            <div class="wi-sidebar glass-card">
+                                <div class="wi-sidebar-header">
+                                    <span>条目列表</span>
+                                    <button id="wi-add-btn" class="wi-btn icon-only" title="添加条目">+</button>
+                                </div>
+                                
+                                <div id="wi-list-container" class="wi-list-scroll">
+                                    <!-- JS 会渲染条目到这里 -->
+                                </div>
+                            </div>
+
+                            <!-- 右栏：编辑区 -->
+                            <div class="wi-editor glass-card">
+                                
+                                <!-- A. 本书全局设定 -->
+                                <div class="wi-section-card">
+                                    <h4 class="wi-section-title">📚 本书设定 <span class="sub-text">(对整本书生效)</span></h4>
+                                    <label class="wi-input-row">
+                                        <span>生效范围:</span>
+                                        <select id="wi-book-char-select" class="wi-select setting-input">
+                                            <option value="">全局 (对所有角色生效)</option>
+                                            <!-- JS会填充角色 -->
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <!-- B. 单个条目编辑 -->
+                                <div class="wi-edit-area">
+                                    <div class="wi-edit-header">
+                                        <h4 class="wi-section-title">📝 条目编辑</h4>
+                                        <div class="wi-checkbox-wrapper">
+                                            <input type="checkbox" id="wi-edit-constant">
+                                            <label for="wi-edit-constant">常驻 (无视关键词，永远生效)</label>
+                                        </div>
+                                    </div>
+
+                                    <input type="hidden" id="wi-edit-uid">
+                                    
+                                    <div class="wi-form-group">
+                                        <label>触发关键词 <span class="sub-text">(逗号分隔)</span></label>
+                                        <input type="text" id="wi-edit-keys" class="setting-input" placeholder="例如: 森林, 魔法 (留空仅依靠常驻生效)">
+                                    </div>
+
+                                    <div class="wi-form-group flex-grow">
+                                        <label>设定内容 <span class="sub-text">(支持 {{user}}, {{char}})</span></label>
+                                        <textarea id="wi-edit-content" class="setting-input wi-textarea" placeholder="当检测到关键词时，注入给AI的内容..."></textarea>
+                                    </div>
+
+                                    <div class="wi-form-actions">
+                                        <button id="wi-delete-btn" class="wi-btn danger">删除条目</button>
+                                        <button id="wi-save-btn" class="wi-btn primary large">保存条目</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 世界书结束 -->
 
             </div>
         </div>
