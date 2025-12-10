@@ -1655,18 +1655,56 @@ window.exportData = () => {
 
 window.importData = (input) => {
     if (!input.files || !input.files[0]) return;
-    if (!confirm('导入将覆盖当前所有设置，确定吗？')) return;
+    
+    // 1. 提示更加明确
+    if (!confirm('【警告】\n恢复将清空当前所有数据！\n\n注意：如果备份文件超过 2.5MB，手机可能无法恢复。确定继续吗？')) {
+        input.value = ''; // 清空选择，方便下次重选
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const data = JSON.parse(e.target.result);
+            const jsonStr = e.target.result;
+            const data = JSON.parse(jsonStr);
+
+            // 2. 关键步骤：计算预计大小，提前预警
+            // 简单估算：字符串长度 * 2 = 大致的 LocalStorage 占用字节数
+            const estimatedSize = jsonStr.length * 2;
+            const limit = 5 * 1024 * 1024; // 5MB
+
+            console.log(`文件字符数: ${jsonStr.length}, 预计内存占用: ${(estimatedSize/1024/1024).toFixed(2)} MB`);
+
+            if (estimatedSize > limit) {
+                alert(`【风险提示】\n备份数据解压后约 ${(estimatedSize/1024/1024).toFixed(2)} MB。\n超过了手机 5MB 的限制，极大概率会失败！\n\n建议：在电脑端删除部分聊天记录后重新备份。`);
+                // 虽然超标，但还是尝试往下走，万一浏览器也是 UTF-8 存储呢（极少见）
+            }
+
+            // 3. 核心修复：在写入前，必须先腾出空间！
+            // 如果不先 clear，旧数据 + 新数据 肯定瞬间爆炸
+            localStorage.clear(); 
+            
+            // 4. 开始写入
             Storage.importFromBackup(data);
-            alert('导入成功，页面将刷新');
+            
+            alert('✅ 恢复成功！页面将刷新');
             location.reload();
-        } catch(err) { alert('文件格式错误'); }
+
+        } catch(err) { 
+            // 5. 捕获真实的错误原因
+            console.error(err);
+            if (err.name === 'QuotaExceededError' || err.message.toLowerCase().includes('quota')) {
+                alert('❌ 恢复失败：存储空间不足！\n\n原因：你的备份数据太大（超过手机 5MB 限制）。\n\n解决方法：\n1. 请在电脑端导入此备份。\n2. 删除一些带图片的对话或长对话。\n3. 重新导出后再发给手机。');
+            } else {
+                alert('❌ 恢复失败：文件格式错误或数据损坏。\n' + err.message);
+            }
+            
+            // 恢复失败了，但刚才把 localStorage 清空了，由于是 SPA 可能不需要回滚，
+            // 但用户现在的状态是空白的，建议刷新让用户重新初始化
+            location.reload(); 
+        }
     };
     reader.readAsText(input.files[0]);
 };
-
 // 启动应用
 window.onload = () => App.init();
