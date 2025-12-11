@@ -268,52 +268,85 @@
                 <!-- ====================== 3. 存储 ====================== -->
                 <div class="tab-pane" id="storage">
 
-                    <!-- 导入导出配置 -->
-                    <h3 class="section-title">导入导出配置</h3>
+                    <!-- A. 本地文件导入导出 (保持不变) -->
+                    <h3 class="section-title">本地文件备份</h3>
                     <div class="main-options">
+                        <!-- 导出按钮 -->
                         <div class="main-option" onclick="exportData()" style="justify-content: center; font-weight: 500;">
-                            <span>导出当前配置（下载 JSON 文件）</span>
+                            <span>导出配置（下载 .json 文件）</span>
                         </div>
 
+                        <!-- 导入按钮 (通过 hidden input 实现) -->
                         <label class="main-option" style="justify-content: center; font-weight: 500; cursor: pointer;">
-                            <span>从备份文件导入配置</span>
+                            <span>从文件恢复配置</span>
                             <input type="file" id="file" accept=".json,application/json" 
                                 style="display: none;" onchange="importData(this)">
                         </label>
                     </div>
 
-                    <!-- GitHub Gist 云同步 -->
-                    <h3 class="section-title">GitHub Gist 云同步（多设备同步）</h3>
+                    <!-- B. 云端同步区域 (双模版) -->
+                    <h3 class="section-title">云端同步</h3>
                     <div class="gist-sync-card">
+                        
+                        <!-- 1. 模式选择下拉菜单 -->
                         <div class="input-group">
-                            <label class="input-label">GitHub Personal Access Token</label>
-                            <input type="password" id="gist-token" class="setting-input" 
-                                placeholder="只勾选 gist 权限即可" autocomplete="off">
-                            <small class="input-hint">
-                                填写Token→【先】点保存→再开始备份或恢复
-                            </small>
+                            <label class="input-label">选择同步方式</label>
+                            <select id="sync-provider" class="setting-input" onchange="CloudSync.toggleMode()">
+                                <option value="custom">自定义服务器 (私有云)</option>
+                                <option value="gist">GitHub Gist (公共云)</option>
+                            </select>
                         </div>
 
-                        <input type="text" id="gist-id-input" placeholder="Gist ID (通常在恢复时手动填写)">
-                        <button id="gist-find">查找Gist ID</button>
+                        <!-- 2. 服务器地址 (自定义模式显示，Gist模式隐藏) -->
+                        <!-- 注意 id="group-custom-url" 对应 JS 里的控制逻辑 -->
+                        <div class="input-group" id="group-custom-url">
+                            <label class="input-label">后端 API 地址</label>
+                            <input type="text" id="custom-url" class="setting-input" 
+                                placeholder="例如: https://sync.your-url.com/api/data">
+                        </div>
 
+                        <!-- 3. Gist ID (Gist模式显示，自定义模式隐藏) -->
+                        <div class="input-group" id="group-gist-id" style="display:none;">
+                            <label class="input-label">Gist ID</label>
+                            <!-- Flex 布局：左边输入框，右边查找按钮 -->
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="gist-id-input" class="setting-input" 
+                                    placeholder="新建留空，恢复必填" style="flex: 1;">
+                                
+                                <button type="button" class="gist-btn" onclick="CloudSync.findBackup()" 
+                                    style="width: auto; padding: 0 12px; font-size: 0.9em; white-space: nowrap;">
+                                    🔍 自动查找
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4. 密码/Token 输入框 (共用) -->
+                        <!-- id="auth-label" 用于 JS 动态修改文字 (Secret Key 或 Token) -->
+                        <div class="input-group">
+                            <label class="input-label" id="auth-label">访问密码 (Secret Key)</label>
+                            <input type="password" id="gist-token" class="setting-input" autocomplete="off">
+                            <small class="input-hint">新填写的key，上传完请记得点击页面下方“保存设置”以记住密码，不然下次记不住</small>
+                        </div>
+
+                        <!-- 5. 操作按钮 -->
                         <div class="gist-buttons">
-                            <button type="button" id="gist-create-and-backup" class="gist-btn primary">
-                                创建并备份
+                            <!-- 直接绑定 onclick 事件，防止 main.js 里漏绑 -->
+                            <button type="button" id="gist-backup" class="gist-btn primary" onclick="CloudSync.updateBackup()">
+                                上传 / 同步
                             </button>
-                            <button type="button" id="gist-backup" class="gist-btn">
-                                更新云端备份
-                            </button>
-                            <button type="button" id="gist-restore" class="gist-btn">
-                                从云端恢复
+                            <button type="button" id="gist-restore" class="gist-btn" onclick="CloudSync.restoreBackup()">
+                                拉取 / 恢复
                             </button>
                         </div>
 
+                        <!-- 6. 状态显示 -->
                         <div id="gist-status" class="gist-status">
-                            点击“创建并备份”测试连接状态
+                            准备就绪
                         </div>
                     </div>
                 </div>
+
+
 
                 <!-- ★★★★★ 4. 新增：世界书 (Refactored for Books) ★★★★★ -->
                 <div id="worldbook" class="tab-pane">

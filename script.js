@@ -403,20 +403,46 @@ const API = {
 };
 
 // =========================================
-// 5. CLOUD SYNC (Gist 同步服务 - 混淆版)
+// 5. CLOUD SYNC (终极混合版 - 含安全防御)
 // =========================================
 const CloudSync = {
     els: {
-        token: document.getElementById('gist-token'),
-        idInput: document.getElementById('gist-id-input'),
-        status: document.getElementById('gist-status')
+        provider: document.getElementById('sync-provider'),
+        urlInput: document.getElementById('custom-url'),
+        gistIdInput: document.getElementById('gist-id-input'),
+        token: document.getElementById('gist-token'), // 这里填密码/Token
+        status: document.getElementById('gist-status'),
+        groupUrl: document.getElementById('group-custom-url'),
+        groupGistId: document.getElementById('group-gist-id'),
+        authLabel: document.getElementById('auth-label')
     },
 
     init() {
-        const savedId = localStorage.getItem(CONFIG.GIST_ID_KEY);
-        if (savedId && this.els.idInput) {
-            this.els.idInput.value = savedId;
-            this.showStatus(`本地加载 Gist ID: ${savedId.slice(0, 6)}...`, false);
+        // 恢复上次的选择
+        const savedMode = localStorage.getItem('SYNC_MODE') || 'custom';
+        if(this.els.provider) this.els.provider.value = savedMode;
+
+        const savedUrl = localStorage.getItem('SYNC_CUSTOM_URL');
+        if(savedUrl && this.els.urlInput) this.els.urlInput.value = savedUrl;
+
+        const savedGistId = localStorage.getItem(CONFIG.GIST_ID_KEY);
+        if(savedGistId && this.els.gistIdInput) this.els.gistIdInput.value = savedGistId;
+
+        this.toggleMode();
+    },
+
+    toggleMode() {
+        const mode = this.els.provider.value;
+        localStorage.setItem('SYNC_MODE', mode);
+
+        if (mode === 'custom') {
+            this.els.groupUrl.style.display = 'flex';
+            this.els.groupGistId.style.display = 'none';
+            this.els.authLabel.textContent = '服务器访问密码 (Secret Key)';
+        } else {
+            this.els.groupUrl.style.display = 'none';
+            this.els.groupGistId.style.display = 'flex';
+            this.els.authLabel.textContent = 'GitHub Token';
         }
     },
 
@@ -426,271 +452,263 @@ const CloudSync = {
         this.els.status.style.color = isError ? '#f92f2fff' : '#3ec444ff';
     },
 
-    getToken() {
-        let token = STATE.settings.GIST_TOKEN;
-        if (!token) {
-            this.showStatus('请先在上方设置并保存 Token', true);
+    getAuth() {
+        // 1. 优先读取输入框里当前填写的密码
+        let val = this.els.token ? this.els.token.value.trim() : '';
+
+        // 2. 如果输入框是空的，再去读取之前保存的设置
+        if (!val) {
+            val = STATE.settings.GIST_TOKEN || '';
+        }
+
+        // 3. 还是空的？那就报错
+        if (!val) {
+            this.showStatus('请填写访问密码 (Secret Key)', true);
             return null;
         }
-
-        // === 【新增修复逻辑】 ===
-        // 如果发现 Token 是以 ENC_ 开头的，说明被加密过，需要解密
-        if (token.startsWith('ENC_')) {
-            try {
-                // 1. 去掉前缀 "ENC_"
-                const base64Content = token.slice(4); 
-                // 2. Base64 解码 (浏览器内置函数 atob)
-                token = atob(base64Content);
-            } catch (e) {
-                console.error('Token 解密失败:', e);
-                this.showStatus('Token 格式错误，请重新输入', true);
-                return null;
-            }
+        
+        // --- 兼容旧版加密 Token (保持不变) ---
+        if (val.startsWith('ENC_')) {
+            try { val = atob(val.slice(4)); } catch (e) { return null; }
         }
-        // =======================
-
-        return token.trim();
+        return val;
     },
 
-    updateGistId(newId) {
-        if (newId && typeof newId === 'string' && newId.trim() !== '') {
-            const cleanId = newId.trim();
-            this.els.idInput.value = cleanId;
-            localStorage.setItem(CONFIG.GIST_ID_KEY, cleanId);
-            return cleanId;
-        }
-        return null;
-    },
-
-    // --- 新增：混淆与解密工具函数 ---
-    // 规则：先反转字符串，再 Base64 编码。这样能彻底破坏 ghp_ 前缀
+    // --- 逻辑补充：混淆工具 (防GitHub扫描) ---
     _maskToken(token) {
         if (!token) return token;
-        try {
-            return btoa(token.split('').reverse().join(''));
-        } catch (e) {
-            console.error("Token mask failed", e);
-            return token;
-        }
+        try { return btoa(token.split('').reverse().join('')); } catch (e) { return token; }
     },
 
     _unmaskToken(maskedToken) {
         if (!maskedToken) return maskedToken;
-        // 如果看起来像正常的 ghp_ 开头，说明是旧备份或未混淆，直接返回
         if (maskedToken.startsWith('ghp_') || maskedToken.startsWith('github_pat_')) return maskedToken;
-        try {
-            return atob(maskedToken).split('').reverse().join('');
-        } catch (e) {
-            console.error("Token unmask failed", e);
-            return maskedToken;
-        }
+        try { return atob(maskedToken).split('').reverse().join(''); } catch (e) { return maskedToken; }
     },
-    // --------------------------------
+    // ---------------------------------------
 
-    async findBackup() {
-        const token = this.getToken();
-        if (!token) return;
-
-        this.showStatus('正在云端查找...');
-        try {
-            const res = await fetch('https://api.github.com/gists', {
-                headers: { Authorization: `token ${token}` }
-            });
-            if (!res.ok) throw new Error(`查找失败 (${res.status})`);
-
-            const gists = await res.json();
-            const backup = gists.find(g => g.description === "TeleWindy 聊天记录与配置自动备份");
-
-            if (backup) {
-                this.updateGistId(backup.id);
-                this.showStatus(`找到备份！ID: ${backup.id.slice(0, 8)}...`);
-            } else {
-                this.showStatus('未找到匹配的 TeleWindy 备份', true);
-            }
-        } catch (e) {
-            this.showStatus(e.message, true);
-        }
-    },
-
-    // 辅助函数：准备备份数据（包含混淆步骤）
-    _prepareBackupPayload() {
-        // 1. 获取原始数据
+    // 辅助：准备上传的数据
+    _preparePayload() {
         const originalData = Storage.exportAllForBackup();
-        
-        // 2. 深拷贝一份，以免修改影响当前运行的应用状态
         const dataToUpload = JSON.parse(JSON.stringify(originalData));
 
-        // 3. 检查并混淆 Token (如果在设置里的话)
-        // 假设 token 存储在 dataToUpload.settings.GIST_TOKEN，请根据你实际的 Storage 结构调整路径
+        // 如果设置里存了 Token/密码，先混淆它，防止明文泄露
         if (dataToUpload.settings && dataToUpload.settings.GIST_TOKEN) {
             dataToUpload.settings.GIST_TOKEN = this._maskToken(dataToUpload.settings.GIST_TOKEN);
         }
 
-        // 4. 构建 payload
         return {
-            backup_at: new Date().toISOString(), 
-            app: "TeleWindy", 
-            data: dataToUpload // 这里面的 Token 已经是乱码了
+            backup_at: new Date().toISOString(),
+            app: "TeleWindy",
+            data: dataToUpload
         };
     },
 
-    async createBackup() {
-        const token = this.getToken();
-        if (!token) return;
-
-        this.showStatus('正在创建并备份...');
-        
-        // 使用处理过的数据
-        const contentData = this._prepareBackupPayload();
-        
-        const payload = {
-            description: "TeleWindy 聊天记录与配置自动备份", 
-            public: false,
-            files: { "telewindy-backup.json": { content: JSON.stringify(contentData, null, 2) } }
-        };
-
-        try {
-            const res = await fetch('https://api.github.com/gists', {
-                method: 'POST',
-                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                const json = await res.json();
-                this.updateGistId(json.id);
-                this.showStatus(`创建成功！ID: ${json.id}`);
-            } else {
-                throw new Error('创建失败');
-            }
-        } catch (e) {
-            this.showStatus(e.message, true);
-        }
-    },
-
+    // --- 主入口 ---
     async updateBackup() {
-        const token = this.getToken();
-        const gistId = this.els.idInput ? this.els.idInput.value.trim() : null;
-        if (!token || !gistId) return this.showStatus('缺少 Token 或 Gist ID', true);
+        const mode = this.els.provider.value;
+        if (mode === 'custom') await this._uploadToCustom();
+        else await this._uploadToGist();
+    },
 
-        this.showStatus('正在同步更新...');
+    // ==========================================
+    // 🔍 伟大的自动查找功能 (Gist 专用)
+    // ==========================================
+    async findBackup() {
+        // 1. 获取 Token (复用现有的安全获取逻辑)
+        const token = this.getAuth();
+        if (!token) return; // 如果没填 Token，getAuth 会自动提示
+
+        this.showStatus('🔍 正在去 GitHub 翻箱倒柜...');
         
-        // 使用处理过的数据
-        const contentData = this._prepareBackupPayload();
-
-        const payload = { files: { "telewindy-backup.json": { content: JSON.stringify(contentData, null, 2) } } };
-
         try {
-            const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
-                method: 'PATCH',
-                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            // 2. 请求 Gist 列表
+            const res = await fetch('https://api.github.com/gists', {
+                headers: { Authorization: `token ${token}` }
             });
+            
+            if (!res.ok) throw new Error(`连接 GitHub 失败 (${res.status})`);
 
-            if (res.ok) {
-                this.showStatus('备份更新成功！' + new Date().toLocaleTimeString());
-            } else if (res.status === 404) {
-                localStorage.removeItem(CONFIG.GIST_ID_KEY);
-                this.showStatus('ID失效，请重新创建', true);
+            const gists = await res.json();
+            
+            // 3. 匹配描述 (这是识别是不是 TeleWindy 备份的关键)
+            const backup = gists.find(g => g.description === "TeleWindy 聊天记录与配置自动备份");
+
+            if (backup) {
+                // 4. 找到了！填入 ID 并保存
+                this.els.gistIdInput.value = backup.id;
+                localStorage.setItem(CONFIG.GIST_ID_KEY, backup.id);
+                this.showStatus(`✅ 找到啦！ID: ${backup.id.slice(0, 8)}...`);
             } else {
-                throw new Error('更新失败');
+                // 5. 没找到
+                this.showStatus('⚠️ 没找到名为 "TeleWindy..." 的备份', true);
             }
         } catch (e) {
-            this.showStatus(e.message, true);
+            this.showStatus('❌ 查找出错: ' + e.message, true);
         }
     },
 
     async restoreBackup() {
-        const token = this.getToken();
-        const gistId = this.els.idInput ? this.els.idInput.value.trim() : null;
-        if (!token || !gistId) return this.showStatus('缺少 Token 或 Gist ID', true);
+        // 恢复前先尝试获取密码，避免空密码去请求
+        const auth = this.getAuth();
+        if(!auth) return;
 
-        this.showStatus('正在拉取恢复...');
+        const mode = this.els.provider.value;
+        let backupDataJSON = null;
+
         try {
-            // 1. 获取数据的逻辑保持不变
-            const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
-                headers: { Authorization: `token ${token}` }
-            });
-            if (!res.ok) throw new Error('获取失败');
-
-            const json = await res.json();
-            const file = json.files['telewindy-backup.json'];
-            if (!file) throw new Error('文件不存在');
-
-            let content = file.content;
-            if (file.truncated) {
-                const rawRes = await fetch(file.raw_url);
-                content = await rawRes.text();
+            if (mode === 'custom') {
+                backupDataJSON = await this._fetchFromCustom(auth);
+            } else {
+                backupDataJSON = await this._fetchFromGist(auth);
             }
 
-            const cleaned = content.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-            
-            // 2. 解析数据
-            let backupData;
-            try {
-                backupData = JSON.parse(cleaned);
-            } catch (e) {
-                throw new Error('备份文件 JSON 格式损坏');
-            }
-
-            if (backupData && backupData.data) {
-                // --- 预判大小 ---
-                const jsonStr = JSON.stringify(backupData.data);
-                const estimatedSize = jsonStr.length * 2; // 估算内存占用
-                console.log(`预计恢复占用: ${(estimatedSize/1024/1024).toFixed(2)} MB`);
-                
-                // 如果大于 4.8MB，提前给个警告（不阻止，但让用户心里有数）
-                if (estimatedSize > 4.8 * 1024 * 1024) {
-                    alert(`⚠️ 警告：\n数据量极大(${(estimatedSize/1024/1024).toFixed(2)}MB)，接近手机极限。\n如果恢复失败，请在电脑端精简聊天记录。`);
-                }
-
-                // --- Token 解密逻辑 (保持不变) ---
-                if (backupData.data.settings && backupData.data.settings.GIST_TOKEN) {
-                    const maskedToken = backupData.data.settings.GIST_TOKEN;
-                    const realToken = this._unmaskToken(maskedToken);
-                    backupData.data.settings.GIST_TOKEN = realToken;
-                }
-
-                // ==========================================
-                // 3. 核心修改：先清空，再恢复
-                // ==========================================
-                
-                // 临时保存当前的 ID (Token 在上面已经解密在 backupData 里了，所以不用怕丢)
-                const currentGistId = localStorage.getItem(CONFIG.GIST_ID_KEY);
-
-                try {
-                    console.log('执行核弹级操作：清空本地存储...');
-                    localStorage.clear(); // <--- 这里！腾出所有空间
-
-                    // 恢复 ID (因为 clear 把 ID 也没了，虽然 import 可能会覆盖，但以防万一)
-                    if (currentGistId) localStorage.setItem(CONFIG.GIST_ID_KEY, currentGistId);
-
-                    // 写入数据
-                    Storage.importFromBackup(backupData.data);
-                    
-                    this.showStatus('恢复成功！3秒后自动刷新页面');
-                    setTimeout(() => location.reload(), 3000);
-
-                } catch (storageError) {
-                    // 如果清空了还是存不下，那就是真的存不下了
-                    console.error(storageError);
-                    if (storageError.name === 'QuotaExceededError' || storageError.message.includes('quota')) {
-                        alert('❌ 致命错误：\n即便清空了旧数据，新数据依然超过了手机浏览器 5MB 的限制。\n\n当前状态：本地数据已清空。\n\n请务必在电脑端删除部分长对话后重新备份。');
-                    } else {
-                        alert('❌ 恢复出错：' + storageError.message);
-                    }
-                }
-                // ==========================================
+            if (backupDataJSON && backupDataJSON.data) {
+                this._safeRestore(backupDataJSON.data);
+            } else {
+                throw new Error('数据格式不正确');
             }
         } catch (e) {
             this.showStatus('恢复出错: ' + e.message, true);
-            // 只有非存储类的错误才弹这个窗
-            if (!e.message.includes('quota')) {
-                alert('恢复过程出错:\n' + e.message);
+        }
+    },
+
+    // --- 逻辑补充：安全恢复 (防内存溢出) ---
+    _safeRestore(data) {
+        // 1. 解密配置里的 Token
+        if (data.settings && data.settings.GIST_TOKEN) {
+            data.settings.GIST_TOKEN = this._unmaskToken(data.settings.GIST_TOKEN);
+        }
+
+        // 2. 临时备份关键设置 (因为下面要清空 LocalStorage)
+        const savedMode = localStorage.getItem('SYNC_MODE');
+        const savedUrl = localStorage.getItem('SYNC_CUSTOM_URL');
+        const savedGistId = localStorage.getItem(CONFIG.GIST_ID_KEY);
+
+        try {
+            console.log('执行清空策略...');
+            localStorage.clear(); // <--- 核弹级操作：腾出空间
+
+            // 3. 恢复关键设置 (否则刷新页面后就忘了连哪里了)
+            if(savedMode) localStorage.setItem('SYNC_MODE', savedMode);
+            if(savedUrl) localStorage.setItem('SYNC_CUSTOM_URL', savedUrl);
+            if(savedGistId) localStorage.setItem(CONFIG.GIST_ID_KEY, savedGistId);
+
+            // 4. 写入数据
+            Storage.importFromBackup(data);
+            
+            this.showStatus('恢复成功！3秒后刷新');
+            setTimeout(() => location.reload(), 3000);
+
+        } catch (e) {
+            console.error(e);
+            if (e.name === 'QuotaExceededError' || e.message.includes('quota')) {
+                alert('❌ 空间不足：即使清空了本地数据，备份文件依然太大，无法写入手机浏览器。');
+            } else {
+                alert('恢复时发生未知错误: ' + e.message);
             }
         }
+    },
+
+    // ==========================================
+    // 具体的网络请求逻辑
+    // ==========================================
+    
+    // 1. 自定义服务器上传
+    async _uploadToCustom() {
+        const password = this.getAuth();
+        const url = this.els.urlInput.value.trim();
+        if (!url) return this.showStatus('请输入服务器地址', true);
+
+        localStorage.setItem('SYNC_CUSTOM_URL', url);
+        this.showStatus('正在上传到私有云...');
+
+        const payload = this._preparePayload(); // 使用混淆过的数据
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${password}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) this.showStatus('私有云同步成功！' + new Date().toLocaleTimeString());
+            else throw new Error((await res.json()).error || '上传失败');
+        } catch (e) {
+            this.showStatus(e.message, true);
+        }
+    },
+
+    // 2. 自定义服务器下载
+    async _fetchFromCustom(password) {
+        const url = this.els.urlInput.value.trim();
+        this.showStatus('正在从私有云拉取...');
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${password}` }
+        });
+        if (!res.ok) throw new Error('拉取失败');
+        return await res.json();
+    },
+
+    // 3. Gist 上传
+    async _uploadToGist() {
+        const token = this.getAuth();
+        const gistId = this.els.gistIdInput.value.trim();
+        this.showStatus('正在连接 GitHub...');
+
+        const contentData = this._preparePayload(); // 使用混淆过的数据
+        const payload = {
+            description: "TeleWindy Backup", 
+            files: { "telewindy-backup.json": { content: JSON.stringify(contentData) } }
+        };
+
+        let url = 'https://api.github.com/gists';
+        let method = 'POST';
+        if (gistId) { url += `/${gistId}`; method = 'PATCH'; }
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                const json = await res.json();
+                if (json.id) {
+                    this.els.gistIdInput.value = json.id;
+                    localStorage.setItem(CONFIG.GIST_ID_KEY, json.id);
+                }
+                this.showStatus('GitHub 同步成功！');
+            } else throw new Error('Gist 请求失败');
+        } catch (e) {
+            this.showStatus(e.message, true);
+        }
+    },
+
+    // 4. Gist 下载
+    async _fetchFromGist(token) {
+        const gistId = this.els.gistIdInput.value.trim();
+        if (!gistId) throw new Error('需填写 Gist ID');
+        
+        this.showStatus('正在从 GitHub 拉取...');
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, { 
+            headers: { Authorization: `token ${token}` }
+        });
+        if (!res.ok) throw new Error('Gist 未找到');
+
+        const json = await res.json();
+        const file = json.files['telewindy-backup.json'];
+        
+        let content = file.content;
+        if (file.truncated) content = await (await fetch(file.raw_url)).text();
+        
+        return JSON.parse(content);
     }
 };
+
+// 启动初始化
+setTimeout(() => CloudSync.init(), 500);
+
 
 // =========================================
 // 6. UI RENDERER (DOM 操作)
