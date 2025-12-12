@@ -2222,6 +2222,16 @@ body.dark-mode .danger-btn.outline {
     text-align: center;
 }
 
+/* 特别强调“删除”按钮：红色警示 */
+.menu-panel button[data-action="delete"] {
+    color: #e74c3c;                          /* 鲜艳红，提醒危险 */
+    font-weight: 600;
+}
+
+.menu-panel button[data-action="delete"]:hover {
+    background: rgba(231, 76, 60, 0.12) !important;
+}
+
 .menu-panel button {
     width: 100%;
     padding: 14px 20px;

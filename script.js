@@ -1863,60 +1863,64 @@ const App = {
 
 
     showMessageContextMenu(msgIndex, rect) {
-        STATE.selectedMessageIndex = msgIndex;  // 记录当前长按的是哪条消息
+        STATE.selectedMessageIndex = msgIndex;  // 记录选中的消息索引
 
-        // 如果菜单还没创建，就创建一次（只创建一次）
+        const menu = this.els.msgContextMenu || document.getElementById('msg-context-menu');
+
+        // 第一次调用时缓存元素（避免每次都查询）
         if (!this.els.msgContextMenu) {
-            const menu = document.createElement('div');
-            menu.id = 'msg-context-menu';
-            menu.innerHTML = `
-                <div class="menu-backdrop"></div>
-                <div class="menu-panel">
-                    <button data-action="edit">编辑</button>
-                    <button data-action="copy">复制</button>
-                    <button data-action="delete">删除</button>
-                    <hr>
-                    <button data-action="cancel">取消</button>
-                </div>
-            `;
-            document.body.appendChild(menu);
             this.els.msgContextMenu = menu;
 
-            // 用事件委托，只绑定一次（推荐方式，更稳）
+            // 事件委托：只绑定一次
             menu.addEventListener('click', e => {
                 const btn = e.target.closest('button');
-                if (!btn) return;  // 点击的不是按钮，直接忽略
+                if (!btn) return;
 
                 const action = btn.dataset.action;
 
                 if (action === 'cancel') {
-                    menu.style.display = 'none';
+                    this.hideMessageContextMenu();
                     return;
                 }
 
-                // 执行编辑/复制/删除（它会自己从 STATE.selectedMessageIndex 读取索引）
+                // 执行对应操作
                 this.handleMessageAction(action);
-                menu.style.display = 'none';  // 操作完就隐藏菜单
+                this.hideMessageContextMenu();
             });
 
-            // 点击背景遮罩也关闭菜单
+            // 点击遮罩关闭
             menu.querySelector('.menu-backdrop').addEventListener('click', () => {
-                menu.style.display = 'none';
+                this.hideMessageContextMenu();
             });
         }
 
-        // 显示菜单（每次长按都会执行到这里）
-        this.els.msgContextMenu.style.display = 'flex';
+        // 显示菜单
+        menu.classList.remove('hidden');
+        menu.classList.add('visible');  // 推荐用 class 控制，更现代
 
-        // 可选：把菜单定位到长按的位置附近（提升体验）
-        // 如果你想居中显示，可以不写下面这几行
-        // if (rect) {
-        //     const panel = this.els.msgContextMenu.querySelector('.menu-panel');
-        //     panel.style.position = 'fixed';
-        //     panel.style.left = '50%';
-        //     panel.style.top = '50%';
-        //     panel.style.transform = 'translate(-50%, -50%)';
-        // }
+        // 可选：定位到长按位置附近（提升体验）
+        // 如果你想让它始终居中显示，就注释掉下面这块
+        /*
+        if (rect) {
+            const panel = menu.querySelector('.menu-panel');
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+
+            panel.style.position = 'fixed';
+            panel.style.left = x + 'px';
+            panel.style.top = y + 'px';
+            panel.style.transform = 'translate(-50%, -50%)';
+        }
+        */
+    },
+
+    // 建议额外加一个隐藏方法，方便调用
+    hideMessageContextMenu() {
+        const menu = this.els.msgContextMenu;
+        if (menu) {
+            menu.classList.remove('visible');
+            menu.classList.add('hidden');
+        }
     },
 
     bindEvents() {
