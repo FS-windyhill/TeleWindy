@@ -1130,47 +1130,50 @@ const UI = {
         App.clearWorldInfoEditor(); 
     },
 
-    renderChatHistory(contact) {
-        this.els.chatMsgs.innerHTML = '';
-        this.els.chatTitle.innerText = contact.name;
+    // renderChatHistory(contact) {
+    //     this.els.chatMsgs.innerHTML = '';
+    //     this.els.chatTitle.innerText = contact.name;
         
-        contact.history.forEach(msg => {
-            if (msg.role === 'system') return;
-            const sender = msg.role === 'assistant' ? 'ai' : 'user';
+    //     contact.history.forEach((msg, historyIndex) => {  // ← 新增 historyIndex
+    //         if (msg.role === 'system') return;
+    //         const sender = msg.role === 'assistant' ? 'ai' : 'user';
 
-            // ★★★ 修改开始：把原来的 const cleanText 改成 let，并增加清洗逻辑 ★★★
+    //         let cleanText = typeof msg === 'string' ? msg : msg.content || '';
             
-            let cleanText = typeof msg === 'string' ? msg : msg.content || '';
+    //         if (sender === 'user') {
+    //             cleanText = cleanText.replace(/^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/, '');
+    //         }
+
+    //         const msgTime = typeof msg === 'string' ? null : msg.timestamp;
             
-            // 如果是用户发的消息，把开头类似 [Dec.10 19:32] 的时间戳去掉
-            if (sender === 'user') {
-                cleanText = cleanText.replace(/^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/, '');
-            }
-
-            // ★★★ 修改结束 ★★★
-
-            const msgTime = typeof msg === 'string' ? null : msg.timestamp;
+    //         const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim());
             
-            const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim());
-            if (paragraphs.length > 0) {
-                paragraphs.forEach(p => this.appendMessageBubble(p.trim(), sender, contact.avatar, msgTime));
-            } else if (cleanText.trim()) {
-                this.appendMessageBubble(cleanText.trim(), sender, contact.avatar, msgTime);
-            }
-        });
+    //         if (paragraphs.length === 0 && !cleanText.trim()) return;
 
-        this.scrollToBottom();
-        this.updateRerollState(contact);
-    },
+    //         // ★★★ 新增：创建消息组容器 ★★★
+    //         const group = document.createElement('div');
+    //         group.className = 'message-group';
+    //         group.dataset.msgIndex = historyIndex;  // 关键：标记属于 history 的第几条
+    //         group.dataset.sender = sender;
 
-    removeLatestAiBubbles() {
-        const container = this.els.chatMsgs;
-        while (container.lastElementChild && container.lastElementChild.classList.contains('ai')) {
-            container.removeChild(container.lastElementChild);
-        }
-    },
+    //         if (paragraphs.length > 0) {
+    //             paragraphs.forEach(p => {
+    //                 const bubbleClone = this.createSingleBubble(p.trim(), sender, contact.avatar, msgTime, historyIndex);
+    //                 group.appendChild(bubbleClone);
+    //             });
+    //         } else {
+    //             const bubbleClone = this.createSingleBubble(cleanText.trim(), sender, contact.avatar, msgTime, historyIndex);
+    //             group.appendChild(bubbleClone);
+    //         }
 
-    appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw) {
+    //         this.els.chatMsgs.appendChild(group);
+    //     });
+
+    //     this.scrollToBottom();
+    //     this.updateRerollState(contact);
+    // },
+
+    createSingleBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex) {
         const template = document.getElementById('msg-template');
         const clone = template.content.cloneNode(true);
         
@@ -1182,6 +1185,10 @@ const UI = {
 
         wrapper.classList.add(sender);
         bubble.innerText = text;
+        
+        // ★★★ 新增：给 bubble 也加 data-msg-index，方便事件委托 ★★★
+        bubble.dataset.msgIndex = historyIndex;
+        bubble.className += ' selectable-message';  // 可选：加个 class 方便样式
 
         let timeStr = "";
         if (timestampRaw && timestampRaw.includes(' ')) {
@@ -1192,13 +1199,7 @@ const UI = {
         }
         timeSpan.innerText = timeStr;
 
-        let currentAvatar = '';
-        if (sender === 'user') {
-            currentAvatar = STATE.settings.USER_AVATAR || 'user.jpg';
-        } else {
-            currentAvatar = aiAvatarUrl || '🌸';
-        }
-
+        let currentAvatar = sender === 'user' ? (STATE.settings.USER_AVATAR || 'user.jpg') : (aiAvatarUrl || '🌸');
         const isImage = currentAvatar.startsWith('http') || currentAvatar.startsWith('data:');
 
         if (isImage) {
@@ -1211,7 +1212,94 @@ const UI = {
             avatarText.innerText = currentAvatar;
         }
 
-        this.els.chatMsgs.appendChild(clone);
+        return clone;  // 返回 clone（已包含 .message-wrapper 等）
+    },
+
+    removeLatestAiBubbles() {
+        const container = this.els.chatMsgs;
+        while (container.lastElementChild && container.lastElementChild.classList.contains('ai')) {
+            container.removeChild(container.lastElementChild);
+        }
+    },
+
+    /*新增1212*/
+    renderChatHistory(contact) {
+        this.els.chatMsgs.innerHTML = '';
+        this.els.chatTitle.innerText = contact.name;
+        
+        contact.history.forEach((msg, historyIndex) => {  // ← 新增 historyIndex
+            if (msg.role === 'system') return;
+            const sender = msg.role === 'assistant' ? 'ai' : 'user';
+
+            let cleanText = typeof msg === 'string' ? msg : msg.content || '';
+            
+            if (sender === 'user') {
+                cleanText = cleanText.replace(/^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/, '');
+            }
+
+            const msgTime = typeof msg === 'string' ? null : msg.timestamp;
+            
+            const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim());
+            
+            if (paragraphs.length === 0 && !cleanText.trim()) return;
+
+            // ★★★ 新增：创建消息组容器 ★★★
+            const group = document.createElement('div');
+            group.className = 'message-group';
+            group.dataset.msgIndex = historyIndex;  // 关键：标记属于 history 的第几条
+            group.dataset.sender = sender;
+
+            if (paragraphs.length > 0) {
+                paragraphs.forEach(p => {
+                    const bubbleClone = this.createSingleBubble(p.trim(), sender, contact.avatar, msgTime, historyIndex);
+                    group.appendChild(bubbleClone);
+                });
+            } else {
+                const bubbleClone = this.createSingleBubble(cleanText.trim(), sender, contact.avatar, msgTime, historyIndex);
+                group.appendChild(bubbleClone);
+            }
+
+            this.els.chatMsgs.appendChild(group);
+        });
+
+        this.scrollToBottom();
+        this.updateRerollState(contact);
+    },
+
+/* 1212*/
+    appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex = null) {
+        // 如果没传 historyIndex，就尝试自动获取（用于实时发送新消息）
+        if (historyIndex === null) {
+            const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
+            if (contact && contact.history.length > 0) {
+                historyIndex = contact.history.length - 1;  // 最后一条
+            } else {
+                historyIndex = -1;
+            }
+        }
+
+        // 创建单个气泡（核心逻辑已提取）
+        const clone = this.createSingleBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex);
+
+        // 查找是否已有同一个消息的 group
+        const existingGroup = Array.from(this.els.chatMsgs.children)
+            .reverse()
+            .find(group => group.classList.contains('message-group') && 
+                        parseInt(group.dataset.msgIndex) === historyIndex);
+
+        if (existingGroup) {
+            // 如果已经存在 group，直接追加到里面（同一个消息的后续段落）
+            existingGroup.appendChild(clone);
+        } else {
+            // 否则新建一个 group
+            const group = document.createElement('div');
+            group.className = 'message-group';
+            group.dataset.msgIndex = historyIndex;
+            group.dataset.sender = sender;
+            group.appendChild(clone);
+            this.els.chatMsgs.appendChild(group);
+        }
+
         this.scrollToBottom();
     },
 
@@ -1276,6 +1364,7 @@ const UI = {
 // 7. APP CONTROLLER (业务逻辑)
 // =========================================
 const App = {
+    els: UI.els,
     // 1. 初始化入口
     async init() {
         // [关键点 1] 加上 await，程序会在这里暂停，直到数据库加载完毕
@@ -1723,6 +1812,113 @@ const App = {
         alert(`设置已保存！`);
     },
 
+/*1212*/
+    handleMessageAction(action) {
+        const index = STATE.selectedMessageIndex;
+        if (index === null || index < 0) return;
+
+        const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
+        if (!contact || !contact.history[index]) return;
+
+        const msg = contact.history[index];
+
+        if (action === 'copy') {
+            navigator.clipboard.writeText(msg.content.replace(/^\[[^\]]+\]\s*/, '')).then(() => {
+                alert('已复制到剪贴板');
+            });
+        } 
+        else if (action === 'delete') {
+            if (confirm('确定删除这条消息吗？')) {
+                contact.history.splice(index, 1);
+                Storage.saveContacts();
+                UI.renderChatHistory(contact);
+                this.hideMessageContextMenu();
+            }
+        } 
+        else if (action === 'edit') {
+            const cleanContent = msg.content.replace(/^\[[^\]]+\]\s*/, '');  // 去掉时间戳
+            const newText = prompt('编辑消息内容：', cleanContent);
+            if (newText !== null && newText.trim() !== cleanContent) {
+                // 如果是用户消息，保留时间戳；AI 消息直接改
+                if (msg.role === 'user') {
+                    const timestampMatch = msg.content.match(/^\[([^\]]+)\]/);
+                    const timestamp = timestampMatch ? timestampMatch[0] : formatTimestamp();
+                    msg.content = `[${timestamp.slice(1, -1)}] ${newText.trim()}`;
+                } else {
+                    msg.content = newText.trim();
+                }
+                Storage.saveContacts();
+                UI.renderChatHistory(contact);
+            }
+            this.hideMessageContextMenu();
+        }
+    },
+
+    hideMessageContextMenu() {
+        if (this.els.msgContextMenu) {
+            this.els.msgContextMenu.style.display = 'none';
+        }
+        STATE.selectedMessageIndex = null;
+    },
+
+
+    showMessageContextMenu(msgIndex, rect) {
+        STATE.selectedMessageIndex = msgIndex;  // 记录当前长按的是哪条消息
+
+        // 如果菜单还没创建，就创建一次（只创建一次）
+        if (!this.els.msgContextMenu) {
+            const menu = document.createElement('div');
+            menu.id = 'msg-context-menu';
+            menu.innerHTML = `
+                <div class="menu-backdrop"></div>
+                <div class="menu-panel">
+                    <button data-action="edit">编辑</button>
+                    <button data-action="copy">复制</button>
+                    <button data-action="delete">删除</button>
+                    <hr>
+                    <button data-action="cancel">取消</button>
+                </div>
+            `;
+            document.body.appendChild(menu);
+            this.els.msgContextMenu = menu;
+
+            // 用事件委托，只绑定一次（推荐方式，更稳）
+            menu.addEventListener('click', e => {
+                const btn = e.target.closest('button');
+                if (!btn) return;  // 点击的不是按钮，直接忽略
+
+                const action = btn.dataset.action;
+
+                if (action === 'cancel') {
+                    menu.style.display = 'none';
+                    return;
+                }
+
+                // 执行编辑/复制/删除（它会自己从 STATE.selectedMessageIndex 读取索引）
+                this.handleMessageAction(action);
+                menu.style.display = 'none';  // 操作完就隐藏菜单
+            });
+
+            // 点击背景遮罩也关闭菜单
+            menu.querySelector('.menu-backdrop').addEventListener('click', () => {
+                menu.style.display = 'none';
+            });
+        }
+
+        // 显示菜单（每次长按都会执行到这里）
+        this.els.msgContextMenu.style.display = 'flex';
+
+        // 可选：把菜单定位到长按的位置附近（提升体验）
+        // 如果你想居中显示，可以不写下面这几行
+        // if (rect) {
+        //     const panel = this.els.msgContextMenu.querySelector('.menu-panel');
+        //     panel.style.position = 'fixed';
+        //     panel.style.left = '50%';
+        //     panel.style.top = '50%';
+        //     panel.style.transform = 'translate(-50%, -50%)';
+        // }
+    },
+
     bindEvents() {
         // --- Tab 切换 (便签切换小工具) ---
         // 移到这里是为了确保 DOM 元素已经存在，并且逻辑统一管理
@@ -1868,6 +2064,44 @@ const App = {
         if(editUpBtn) editUpBtn.onclick = () => document.getElementById('edit-avatar-file').click();
         const userUpBtn = document.getElementById('user-avatar-upload-btn');
         if(userUpBtn) userUpBtn.onclick = () => document.getElementById('user-avatar-file').click();
+
+        // 长按相关变量
+        let longPressTimer = null;
+        const LONG_PRESS_DURATION = 600;
+
+        UI.els.chatMsgs.addEventListener('touchstart', e => {
+            const bubble = e.target.closest('.message-bubble');
+            if (!bubble) return;
+            
+            const msgIndex = parseInt(bubble.dataset.msgIndex);
+            if (isNaN(msgIndex)) return;
+
+            e.preventDefault(); // 这里必须 preventDefault，防止长按选中文字
+            longPressTimer = setTimeout(() => {
+                App.showMessageContextMenu(msgIndex, bubble.getBoundingClientRect());  // 注意：这里要用 App.
+            }, LONG_PRESS_DURATION);
+        }, { passive: false });  // ← 明确告诉浏览器：这个会 preventDefault
+
+        UI.els.chatMsgs.addEventListener('touchend', () => clearTimeout(longPressTimer), { passive: true });
+        UI.els.chatMsgs.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });  // ← 这个可以 passive
+
+        // 桌面鼠标模拟长按
+        UI.els.chatMsgs.addEventListener('mousedown', e => {
+            if (e.button !== 0) return; // 只左键
+            const bubble = e.target.closest('.message-bubble');
+            if (!bubble) return;
+            
+            const msgIndex = parseInt(bubble.dataset.msgIndex);
+            if (isNaN(msgIndex)) return;
+
+            longPressTimer = setTimeout(() => {
+                App.showMessageContextMenu(msgIndex, bubble.getBoundingClientRect());
+            }, LONG_PRESS_DURATION);
+            
+        });
+
+        UI.els.chatMsgs.addEventListener('mouseup', () => clearTimeout(longPressTimer));
+        UI.els.chatMsgs.addEventListener('mouseleave', () => clearTimeout(longPressTimer));
 
         // Gist Events
         const gistFind = document.getElementById('gist-find');

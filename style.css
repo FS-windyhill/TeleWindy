@@ -2155,3 +2155,92 @@ body.dark-mode .danger-btn.outline {
     }
 
 }
+
+/* =======================弹窗====================================*/
+.message-group {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 0;
+}
+
+.message-bubble {
+    -webkit-user-select: text;     /* 允许复制文字 */
+    user-select: text;
+    /* 长按高亮反馈 */
+    transition: background 0.2s;
+}
+
+.message-bubble:active {
+    background: rgba(0,0,0,0.1) !important;
+}
+
+.selectable-message {
+    cursor: pointer;
+}
+
+.message-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.message-bubble {
+    user-select: text;
+    -webkit-user-select: text;
+    transition: background 0.2s;
+}
+
+.message-bubble:active {
+    background: rgba(128, 128, 128, 0.2) !important;
+}
+
+#msg-context-menu {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.menu-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1;
+}
+
+.menu-panel {
+    position: relative;               /* 改成 relative 或者 fixed 都行 */
+    background: var(--bg-color, white);  /* 或者 #fff */
+    border-radius: 12px;
+    padding: 8px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+    z-index: 2;                       /* 关键：面板在遮罩上面！ */
+    text-align: center;
+}
+
+.menu-panel button {
+    width: 100%;
+    padding: 14px 20px;
+    text-align: center;
+    border: none;
+    background: none;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.menu-panel button:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.menu-panel hr {
+    margin: 8px 0;
+    border: none;
+    border-top: 1px solid #eee;
+}
+
+
+
