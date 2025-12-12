@@ -435,56 +435,71 @@ const Storage = {
 };
 
 // =========================================
-// 3. WORLD INFO ENGINE (世界书逻辑) ★★★ 重写
+// 3. WORLD INFO ENGINE (已修正)
 // =========================================
 const WorldInfoEngine = {
-    // 解析 ST 格式的 JSON，并返回一个 Book 对象
+    // 1. 导入逻辑：增加对 ST 各种怪异格式的兼容
     importFromST(jsonString, fileName) {
         try {
             const data = JSON.parse(jsonString);
             const entriesObj = data.entries || {}; 
             const newEntries = [];
 
-            // ST 的 entries 通常是一个对象，key 是数字 "0", "1" 等
-            Object.values(entriesObj).forEach(entry => {
-                // 提取核心字段
+            // 既支持数组格式，也支持对象格式 {"0":{}, "1":{}}
+            const entriesList = Array.isArray(entriesObj) ? entriesObj : Object.values(entriesObj);
+
+            entriesList.forEach(entry => {
+                // 修正：ST 的 key 可能是 "a,b,c" 字符串，也可能是 ["a","b"] 数组
+                let safeKeys = [];
+                if (Array.isArray(entry.key)) {
+                    safeKeys = entry.key;
+                } else if (typeof entry.key === 'string') {
+                    safeKeys = entry.key.split(',').map(k => k.trim()).filter(k => k);
+                }
+
+                // 修正：如果导入时没有 comment，尝试用第一个关键词代替，还没有就叫“未命名”
+                let safeComment = entry.comment || '';
+                if (!safeComment && safeKeys.length > 0) safeComment = safeKeys[0];
+                if (!safeComment) safeComment = '未命名条目';
+
                 newEntries.push({
                     uid: Date.now() + Math.random().toString(36).substr(2, 9),
-                    keys: entry.key || [], 
+                    keys: safeKeys, 
                     content: entry.content || '',
                     constant: !!entry.constant, 
-                    comment: entry.comment || '', 
-                    // characterId 不再需要存入 entry，由 Book 统一管理
+                    // ★★★ 核心：确保这里读到了名字
+                    comment: safeComment 
                 });
             });
             
-            // 创建一个新的 Book 对象
-            const bookName = fileName ? fileName.replace('.json', '') : ('导入世界书 ' + new Date().toLocaleTimeString());
+            const bookName = fileName ? fileName.replace(/\.[^/.]+$/, "") : ('导入书 ' + new Date().toLocaleTimeString());
             
             return {
                 id: 'book_' + Date.now() + Math.random().toString(36).substr(2, 5),
                 name: bookName,
-                characterId: '', // 默认导入为全局，用户可在UI修改
+                characterId: '', 
                 entries: newEntries
             };
 
         } catch (e) {
-            console.error("World Info Import Failed:", e);
-            throw new Error("格式解析失败，请确保是 SillyTavern 导出的 .json 文件");
+            console.error("Import Failed:", e);
+            alert("导入失败：请确认是有效的 JSON 文件");
+            throw e;
         }
     },
 
-    // 导出当前书为 ST 格式 JSON
+    // 2. 导出逻辑：确保 comment 被写回 JSON
     exportToST(book) {
-        if (!book) return null;
+        if (!book) return "{}";
         
         const exportObj = { entries: {} };
         book.entries.forEach((entry, index) => {
+            // 使用 index 作为 key，符合 ST 标准
             exportObj.entries[index] = {
-                uid: index, // ST使用数字索引
+                uid: index, 
                 key: entry.keys,
-                keysecondary: [],
-                comment: entry.comment,
+                // ★★★ 核心：导出时要把名字写回去
+                comment: entry.comment || entry.keys[0] || "未命名",
                 content: entry.content,
                 constant: entry.constant,
                 selective: true,
@@ -494,55 +509,34 @@ const WorldInfoEngine = {
                 excludeRecursion: false,
                 probability: 100,
                 useProbability: true
-                // 其他 ST 字段可以忽略或设默认值
             };
         });
         
         return JSON.stringify(exportObj, null, 2);
     },
 
-    // 核心扫描逻辑：遍历所有书 -> 检查书的启用状态 -> 遍历书内条目
+    // 3. 扫描逻辑 (保持你修改后的版本，这部分没问题)
     scan(userText, history, currentContactId, currentContactName) {
         if (!STATE.worldInfoBooks || STATE.worldInfoBooks.length === 0) return null;
-
-        // ================= 修改开始 =================
-        
-        // 1. 准备扫描文本：仅限【当前用户输入】 + 【上一条AI回复】
-        // history 在 handleSend 中被传入时，已经包含了刚才用户发送的那条
-        // 所以 slice(-2) 拿到的就是 [AI的上一条, 用户的当前条]
         const relevantHistory = history.slice(-2); 
         const contextText = (userText + '\n' + relevantHistory.map(m => m.content).join('\n')).toLowerCase();
-
-        // ================= 修改结束 =================
-        
         const triggeredContent = [];
 
-        // 1. 遍历所有书 (大分类)
         STATE.worldInfoBooks.forEach(book => {
-            // ... (下面的代码保持不变) ...
-            // 2. 检查书是否适用于当前角色
             const isGlobalBook = !book.characterId || book.characterId === "";
             const isBoundBook = book.characterId === currentContactId;
-            
-            if (!isGlobalBook && !isBoundBook) {
-                return; // 跳过这本书
-            }
+            if (!isGlobalBook && !isBoundBook) return;
 
-            // 3. 遍历这本书里的条目
             book.entries.forEach(entry => {
                 let triggered = false;
-
                 if (entry.constant) {
                     triggered = true;
                 } else if (entry.keys && Array.isArray(entry.keys)) {
-                    // 只要有一个 key 存在于 contextText (即最新2条) 中
                     triggered = entry.keys.some(k => {
                         const keyLower = k.toLowerCase().trim();
-                        // 增加了对空 key 的过滤，防止空字符串匹配所有
                         return keyLower && contextText.includes(keyLower);
                     });
                 }
-
                 if (triggered && entry.content) {
                     let finalContent = entry.content
                         .replace(/\{\{user\}\}/gi, '用户') 
@@ -556,6 +550,7 @@ const WorldInfoEngine = {
         return triggeredContent.join('\n\n');
     }
 };
+
 
 // =========================================
 // 4. API SERVICE (LLM通信)
@@ -1067,7 +1062,7 @@ const UI = {
         }
     },
 
-    // ★★★ 渲染世界书：条目列表（基于当前书）★★★
+    // ★★★ 渲染世界书：条目列表（修复显示版）★★★
     renderWorldInfoList() {
         const container = this.els.wiList;
         if (!container) return;
@@ -1082,17 +1077,34 @@ const UI = {
             item.style.borderBottom = '1px solid #eee';
             item.style.cursor = 'pointer';
             item.style.fontSize = '14px';
+            item.style.whiteSpace = 'nowrap';      // 防止文字换行太丑
+            item.style.overflow = 'hidden';        // 超出隐藏
+            item.style.textOverflow = 'ellipsis';  // 显示省略号
             
             // 高亮当前选中的条目
-            if (entry.uid === document.getElementById('wi-edit-uid').value) {
+            const currentEditingUid = document.getElementById('wi-edit-uid') ? document.getElementById('wi-edit-uid').value : null;
+            if (entry.uid === currentEditingUid) {
                 item.style.backgroundColor = 'rgba(0,0,0,0.05)';
                 item.style.fontWeight = 'bold';
             }
 
-            const title = entry.comment || (entry.keys[0] ? entry.keys[0] : '未命名条目');
-            const typeEmoji = entry.constant ? '📌' : '🔎';
+            // ★★★ 核心显示逻辑 ★★★
+            // 1. 优先显示 comment (名字)
+            // 2. 没有名字显示第一个 Key
+            // 3. 还没有就显示 "未命名"
+            let displayName = entry.comment;
             
-            item.innerText = `${typeEmoji} ${title}`;
+            if (!displayName) {
+                if (Array.isArray(entry.keys) && entry.keys.length > 0) {
+                    displayName = entry.keys[0];
+                } else {
+                    displayName = '未命名条目';
+                }
+            }
+
+            const typeEmoji = entry.constant ? '📌' : '🔎';
+            item.innerText = `${typeEmoji} ${displayName}`;
+            
             item.onclick = () => App.loadWorldInfoEntry(entry.uid);
             container.appendChild(item);
         });
@@ -1434,7 +1446,7 @@ const App = {
             // 不需刷新列表，因为内容没变
         }
     },
-
+    
     loadWorldInfoEntry(uid) {
         const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
         if (!book) return;
@@ -1446,21 +1458,34 @@ const App = {
         document.getElementById('wi-edit-keys').value = entry.keys.join(', ');
         document.getElementById('wi-edit-content').value = entry.content;
         document.getElementById('wi-edit-constant').checked = entry.constant;
-        // 注意：角色绑定现在由书控制，不再由条目控制
+
+        // ★★★ 核心修改：把内存里的名字填进输入框
+        const commentInput = document.getElementById('wi-edit-comment');
+        if (commentInput) {
+            commentInput.value = entry.comment || ''; 
+        }
         
-        UI.renderWorldInfoList(); // 刷新高亮
+        // 顺便刷新一下列表高亮
+        UI.renderWorldInfoList(); 
     },
 
     async saveWorldInfoEntry() {
+        // 1. 获取当前书
         const book = STATE.worldInfoBooks.find(b => b.id === STATE.currentBookId);
         if (!book) return alert("请先新建或选择一本世界书");
 
+        // 2. 获取所有输入框的值
         const uid = document.getElementById('wi-edit-uid').value;
-        const keysStr = document.getElementById('wi-edit-keys').value;
-        const content = document.getElementById('wi-edit-content').value;
+        const keysStr = document.getElementById('wi-edit-keys').value || ""; // 防止 null
+        const content = document.getElementById('wi-edit-content').value || "";
         const constant = document.getElementById('wi-edit-constant').checked;
+        
+        // ★★★ 关键：获取名称输入框 ★★★
+        const commentInput = document.getElementById('wi-edit-comment');
+        // 如果输入框存在，就取值；不存在（比如界面没渲染对）就给 null
+        let userComment = commentInput ? commentInput.value.trim() : null;
 
-        // 处理关键词数组
+        // 3. 处理 Key (把字符串转成数组)
         const keys = keysStr.split(/[,，]/).map(k => k.trim()).filter(k => k);
 
         if (!content && !keys.length) {
@@ -1468,30 +1493,49 @@ const App = {
             return;
         }
 
+        // 4. 查找或新建条目
         let entry = book.entries.find(e => e.uid === uid);
         
         if (entry) {
-            // 更新
+            // === 更新逻辑 ===
             entry.keys = keys;
             entry.content = content;
             entry.constant = constant;
-            if (!entry.comment && keys.length > 0) entry.comment = keys[0];
+
+            // ★★★ 核心修复：优先使用用户输入的名字 ★★★
+            if (userComment !== null && userComment !== "") {
+                // 如果用户填了字，就用用户的
+                entry.comment = userComment;
+            } else if (!entry.comment && keys.length > 0) {
+                // 只有当“用户没填”且“原先也没名字”时，才用 Key 兜底
+                entry.comment = keys[0];
+            }
+            // 如果用户清空了输入框，且没有Key，那就让它空着或者叫未命名
+            if (!entry.comment) entry.comment = '未命名条目';
+            
         } else {
-            // 新建
+            // === 新建逻辑 ===
             entry = {
                 uid: Date.now().toString(),
                 keys: keys,
                 content: content,
                 constant: constant,
-                comment: keys[0] || '新建条目'
+                // ★★★ 新建时也是一样：优先用输入框的值
+                comment: userComment || keys[0] || '新建条目'
             };
             book.entries.push(entry);
         }
 
+        // 5. 保存到数据库
         await Storage.saveWorldInfo();
-        UI.renderWorldInfoList();
-        this.clearWorldInfoEditor();
+        
+        // 6. 强制刷新列表 (解决左侧不更新的问题)
+        UI.renderWorldInfoList(); 
+        
+        // 7. 重新加载当前条目 (让输入框里的值保持同步)
         this.loadWorldInfoEntry(entry.uid);
+        
+        console.log("已保存条目:", entry.comment); // 调试用，看控制台有没有打印名字
     },
 
     async deleteWorldInfoEntry() {
@@ -1511,6 +1555,11 @@ const App = {
     clearWorldInfoEditor() {
         document.getElementById('wi-edit-uid').value = '';
         document.getElementById('wi-edit-keys').value = '';
+        
+        // ★★★ 新增：清空名称输入框
+        const commentInput = document.getElementById('wi-edit-comment');
+        if (commentInput) commentInput.value = '';
+
         document.getElementById('wi-edit-content').value = '';
         document.getElementById('wi-edit-constant').checked = false;
         UI.renderWorldInfoList();
