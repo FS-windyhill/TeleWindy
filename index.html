@@ -7,8 +7,8 @@
     
     <!-- PWA 相关 -->
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icon192.png">
-    <link rel="apple-touch-icon" href="/icon192.png">
+    <link rel="icon" href="./icon192.png">
+    <link rel="apple-touch-icon" href="./icon192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -465,8 +465,8 @@
     </div>
 
 
-    <!-- 消息长按上下文菜单 -->
-    <div id="msg-context-menu" class="msg-context-menu">
+    <!-- 1. 长按上下文菜单 (之前找不到的就是这个！) -->
+    <div id="msg-context-menu" class="msg-context-menu" style="display: none;">
         <div class="menu-backdrop"></div>
         <div class="menu-panel">
             <button data-action="edit">编辑</button>
@@ -476,6 +476,19 @@
             <button data-action="cancel">取消</button>
         </div>
     </div>
+
+    <!-- 2. 编辑消息的弹窗 (顺便检查下有没有加这个) -->
+    <div id="msg-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="edit-box">
+            <h3 class="bianjixiaoxi">编辑消息</h3>  <!-- 加了个 class -->
+            <textarea id="edit-msg-textarea" placeholder="在这里输入..."></textarea>
+            <div class="edit-buttons">
+                <button id="btn-edit-cancel">取消</button>
+                <button id="btn-edit-confirm" class="primary">确定</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="script.js"></script>
 </body>

@@ -1,111 +1,132 @@
 /*
- * TeleWindy 项目代码目录结构（树状注释版）
- * 
- * ├─ 1. CONFIG & STATE (配置与状态)
- * │   ├─ CONFIG                // 全局常量配置（键名、默认值、系统提示等）
- * │   └─ STATE                 // 运行时状态（联系人、当前书、设置等）
- * │
- * ├─ 1.5. DB UTILS (IndexedDB 简易封装)
- * │   ├─ open()                // 打开数据库
- * │   ├─ get(key)              // 读取单条数据
- * │   ├─ set(key, value)       // 写入单条数据
- * │   ├─ remove(key)           // 删除单条数据
- * │   ├─ clear()               // 清空整个数据库
- * │   └─ exportAll()           // 导出所有数据（使用游标遍历）
- * │
- * ├─ 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
- * │   ├─ load()                // 初始化加载（设置、联系人、世界书，含数据迁移）
- * │   ├─ saveContacts()        // 保存联系人
- * │   ├─ saveSettings()        // 保存设置
- * │   ├─ saveWorldInfo()       // 保存世界书
- * │   ├─ exportAllForBackup()  // 导出备份（含 Token 加密）
- * │   └─ importFromBackup(data)// 导入备份（含 Token 解密）
- * │
- * ├─ 3. WORLD INFO ENGINE (世界书引擎)
- * │   ├─ importFromST(jsonString, fileName) // 从 SillyTavern 格式导入书
- * │   ├─ exportToST(book)      // 导出为 SillyTavern 兼容格式
- * │   └─ scan(userText, history, currentContactId, currentContactName)
- * │                            // 扫描触发世界书条目并返回注入提示
- * │
- * ├─ 4. API SERVICE (LLM 通信)
- * │   ├─ getProvider(url)      // 判断 API 提供商（openai/claude/gemini）
- * │   ├─ fetchModels(url, key) // 拉取模型列表
- * │   └─ chat(messages, settings) // 发送聊天请求（兼容多种接口）
- * │
- * ├─ 5. CLOUD SYNC (云同步 - Gist 与自定义服务器混合版)
- * │   ├─ init()                // 初始化 UI 与恢复上次模式
- * │   ├─ toggleMode()          // 切换同步方式（Gist / 自定义）
- * │   ├─ showStatus(msg, isError) // 显示同步状态
- * │   ├─ getAuth()             // 获取 Token/密码（带兼容旧加密）
- * │   ├─ _maskToken() / _unmaskToken() // Token 混淆/反混淆（防泄露）
- * │   ├─ _preparePayload()     // 准备上传数据（含 Token 混淆）
- * │   ├─ updateBackup()        // 主入口：根据模式选择上传
- * │   ├─ findBackup()          // 自动查找 GitHub 上已有备份
- * │   ├─ restoreBackup()       // 恢复备份
- * │   ├─ _safeRestore(data)    // 安全恢复（防空间不足）
- * │   ├─ _uploadToCustom()     // 自定义服务器上传
- * │   ├─ _fetchFromCustom()    // 自定义服务器下载
- * │   ├─ _uploadToGist()       // Gist 上传（创建或更新）
- * │   └─ _fetchFromGist()      // Gist 下载
- * │
- * ├─ 6. UI RENDERER (DOM 操作与渲染)
- * │   ├─ init()                // 初始化外观与联系人列表
- * │   ├─ applyAppearance()     // 应用主题与壁纸
- * │   ├─ toggleTheme(newTheme) // 切换日夜模式
- * │   ├─ switchView(viewName)  // 切换列表/聊天视图
- * │   ├─ renderContacts()      // 渲染联系人列表
- * │   ├─ renderBookSelect()    // 渲染世界书下拉框
- * │   ├─ updateCurrentBookSettingsUI() // 更新当前书绑定角色 UI
- * │   ├─ renderWorldInfoList() // 渲染世界书条目列表（显示 comment）
- * │   ├─ initWorldInfoTab()    // 初始化世界书 Tab
- * │   ├─ createSingleBubble(...) // 创建单个消息气泡
- * │   ├─ renderChatHistory(contact) // 渲染完整聊天记录（带消息分组）
- * │   ├─ appendMessageBubble(...) // 追加单条气泡（支持分组）
- * │   ├─ removeLatestAiBubbles() // 删除最近 AI 消息（用于 reroll）
- * │   ├─ scrollToBottom()      // 滚动到底部
- * │   ├─ setLoading(isLoading) // 设置“正在输入”状态
- * │   ├─ updateRerollState(contact) // 更新 reroll 按钮状态
- * │   ├─ playWaterfall(fullText, avatar, timestamp) // 瀑布流显示 AI 回复
- * │   └─ renderPresetMenu()    // 渲染 API 预设下拉菜单
- * │
- * ├─ 7. APP CONTROLLER (主业务逻辑)
- * │   ├─ init()                // 应用启动入口（加载数据 → 初始化 UI → 绑定事件）
- * │   ├─ enterChat(id)         // 进入聊天界面
- * │   ├─ handleSend(isReroll)  // 发送消息 / 重滚
- * │   ├─ openSettings()        // 打开主设置弹窗
- * │   ├─ switchWorldInfoBook(bookId) // 切换当前世界书
- * │   ├─ bindCurrentBookToChar(charId) // 绑定当前书到角色
- * │   ├─ loadWorldInfoEntry(uid) // 加载条目到编辑区
- * │   ├─ saveWorldInfoEntry()  // 保存世界书条目
- * │   ├─ deleteWorldInfoEntry() // 删除条目
- * │   ├─ clearWorldInfoEditor() // 清空编辑区
- * │   ├─ createNewBook()       // 新建世界书
- * │   ├─ renameCurrentBook()   // 重命名当前书
- * │   ├─ deleteCurrentBook()   // 删除当前书
- * │   ├─ exportCurrentBook()   // 导出当前书
- * │   ├─ handleImportWorldInfo(file) // 导入世界书
- * │   ├─ handleSavePreset()    // 保存 API 预设
- * │   ├─ handleLoadPreset(index) // 加载 API 预设
- * │   ├─ handleDeletePreset()  // 删除 API 预设
- * │   ├─ saveSettingsFromUI()  // 从设置弹窗保存配置
- * │   ├─ handleMessageAction(action) // 长按菜单：复制/编辑/删除消息
- * │   ├─ showMessageContextMenu(...) // 显示长按上下文菜单
- * │   ├─ hideMessageContextMenu() // 隐藏上下文菜单
- * │   ├─ bindEvents()          // 绑定所有 DOM 事件（按钮、输入、长按等）
- * │   ├─ readFile(file)        // 读取文件为 base64
- * │   ├─ fetchModelsForUI()    // UI 中拉取模型列表
- * │   ├─ bindImageUpload(...)  // 绑定图片上传逻辑
- * │   ├─ openEditModal(id)     // 打开角色编辑弹窗
- * │   └─ saveContactFromModal() // 保存角色信息
- * │
- * └─ 8. UTILS & EXPORTS (工具函数与全局导出)
- *     ├─ formatTimestamp()     // 格式化时间戳
- *     ├─ window.exportData()   // 全局导出备份函数
- *     └─ window.importData(input) // 全局导入备份函数
- * 
- * 启动入口：window.onload = () => App.init();
+ * =========================================
+ * 代码目录结构树（中文版）
+ * =========================================
+ *
+ * ├── 1. CONFIG & STATE (配置与状态)
+ * │   ├── CONFIG                  // 全局配置常量
+ * │   │   ├── STORAGE_KEY
+ * │   │   ├── SETTINGS_KEY
+ * │   │   ├── WORLD_INFO_KEY
+ * │   │   ├── GIST_ID_KEY
+ * │   │   ├── DEFAULT             // 默认配置对象
+ * │   │   └── SYSTEM_PROMPT       // 系统提示词
+ * │   └── STATE                   // 运行时状态
+ * │       ├── contacts
+ * │       ├── worldInfoBooks
+ * │       ├── currentContactId
+ * │       ├── currentBookId
+ * │       ├── settings
+ * │       └── isTyping
+ *
+ * ├── 1.5. DB UTILS (IndexedDB 简易封装)
+ * │   └── DB
+ * │       ├── open()
+ * │       ├── get(key)
+ * │       ├── set(key, value)
+ * │       ├── remove(key)
+ * │       ├── clear()
+ * │       └── exportAll()
+ *
+ * ├── 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+ * │   └── Storage
+ * │       ├── load()                     // 初始化加载所有数据（含迁移逻辑）
+ * │       ├── saveContacts()
+ * │       ├── saveSettings()
+ * │       ├── saveWorldInfo()
+ * │       ├── exportAllForBackup()       // 导出备份（含Token加密）
+ * │       └── importFromBackup(data)     // 导入备份（含Token解密）
+ *
+ * ├── 3. WORLD INFO ENGINE (世界书引擎，已修正)
+ * │   └── WorldInfoEngine
+ * │       ├── importFromST(jsonString, fileName)  // 从ST格式导入
+ * │       ├── exportToST(book)                    // 导出为ST格式
+ * │       └── scan(userText, history, currentContactId, currentContactName)  // 扫描触发世界书内容
+ *
+ * ├── 4. API SERVICE (LLM通信)
+ * │   └── API
+ * │       ├── getProvider(url)
+ * │       ├── fetchModels(url, key)
+ * │       └── chat(messages, settings)   // 统一处理OpenAI/Claude/Gemini三种接口
+ *
+ * ├── 5. CLOUD SYNC (云同步 - Gist & 自定义服务器混合版)
+ * │   └── CloudSync
+ * │       ├── init()
+ * │       ├── toggleMode()
+ * │       ├── showStatus(msg, isError)
+ * │       ├── getAuth()
+ * │       ├── _maskToken(token) / _unmaskToken(maskedToken)  // Token混淆防扫描
+ * │       ├── _preparePayload()
+ * │       ├── updateBackup()             // 主入口：根据模式选择上传方式
+ * │       ├── findBackup()               // 自动查找Gist备份
+ * │       ├── restoreBackup()
+ * │       ├── _safeRestore(data)
+ * │       ├── _uploadToCustom()
+ * │       ├── _fetchFromCustom(password)
+ * │       ├── _uploadToGist()
+ * │       └── _fetchFromGist(token)
+ *
+ * ├── 6. UI RENDERER (DOM 操作与渲染)
+ * │   └── UI
+ * │       ├── init()
+ * │       ├── applyAppearance()
+ * │       ├── toggleTheme(newTheme)
+ * │       ├── switchView(viewName)
+ * │       ├── renderContacts()
+ * │       ├── renderBookSelect()
+ * │       ├── updateCurrentBookSettingsUI()
+ * │       ├── renderWorldInfoList()
+ * │       ├── initWorldInfoTab()
+ * │       ├── createSingleBubble(...)
+ * │       ├── showEditModal(oldText, onConfirmCallback)
+ * │       ├── removeLatestAiBubbles()
+ * │       ├── renderChatHistory(contact)
+ * │       ├── appendMessageBubble(...)
+ * │       ├── scrollToBottom()
+ * │       ├── setLoading(isLoading)
+ * │       ├── updateRerollState(contact)
+ * │       ├── playWaterfall(fullText, avatar, timestamp)
+ * │       └── renderPresetMenu()
+ *
+ * ├── 7. APP CONTROLLER (主业务逻辑控制器)
+ * │   └── App
+ * │       ├── init()                     // 应用启动入口
+ * │       ├── enterChat(id)
+ * │       ├── handleSend(isReroll)
+ * │       ├── openSettings()
+ * │       ├── switchWorldInfoBook(bookId)
+ * │       ├── bindCurrentBookToChar(charId)
+ * │       ├── loadWorldInfoEntry(uid)
+ * │       ├── saveWorldInfoEntry()
+ * │       ├── deleteWorldInfoEntry()
+ * │       ├── clearWorldInfoEditor()
+ * │       ├── createNewBook()
+ * │       ├── renameCurrentBook()
+ * │       ├── deleteCurrentBook()
+ * │       ├── exportCurrentBook()
+ * │       ├── handleImportWorldInfo(file)
+ * │       ├── handleSavePreset()
+ * │       ├── handleLoadPreset(index)
+ * │       ├── handleDeletePreset()
+ * │       ├── saveSettingsFromUI()
+ * │       ├── handleMessageAction(action)   // 编辑/删除/复制消息
+ * │       ├── showMessageContextMenu(msgIndex, rect)
+ * │       ├── hideMessageContextMenu()
+ * │       ├── bindEvents()               // 集中绑定所有DOM事件
+ * │       ├── readFile(file)
+ * │       ├── fetchModelsForUI()
+ * │       ├── bindImageUpload(...)
+ * │       ├── openEditModal(id)
+ * │       └── saveContactFromModal()
+ *
+ * └── 8. UTILS & EXPORTS (工具函数与全局导出)
+ *     ├── formatTimestamp()
+ *     ├── window.exportData()            // 全局导出备份函数
+ *     └── window.importData(input)       // 全局导入备份函数
+ *     └── window.onload → App.init()     // 页面加载完成启动应用
+ *
+ * =========================================
  */
-
 
 // =========================================
 // 1. CONFIG & STATE (配置与状态)
@@ -1233,10 +1254,57 @@ const UI = {
         return clone;  // 返回 clone（已包含 .message-wrapper 等）
     },
 
+    // 【6. UI RENDERER】
+    showEditModal(oldText, onConfirmCallback) {
+        const modal = document.getElementById('msg-edit-modal');
+        const textarea = document.getElementById('edit-msg-textarea');
+        const btnCancel = document.getElementById('btn-edit-cancel');
+        const btnConfirm = document.getElementById('btn-edit-confirm');
+
+        // 1. 填入旧内容
+        textarea.value = oldText;
+
+        // 2. 显示弹窗
+        modal.style.display = 'flex';
+        textarea.focus(); // 自动聚焦
+
+        // 3. 定义关闭函数
+        const closeModal = () => {
+            modal.style.display = 'none';
+            // 清理事件，防止多次绑定导致重复触发
+            btnConfirm.onclick = null;
+            btnCancel.onclick = null;
+        };
+
+        // 4. 绑定按钮事件
+        btnCancel.onclick = () => {
+            closeModal();
+        };
+
+        btnConfirm.onclick = () => {
+            const newText = textarea.value;
+            // 调用回调函数，把新文本传回去
+            if (onConfirmCallback) onConfirmCallback(newText);
+            closeModal();
+        };
+    },
+
+    // 【6. UI RENDERER】
     removeLatestAiBubbles() {
         const container = this.els.chatMsgs;
-        while (container.lastElementChild && container.lastElementChild.classList.contains('ai')) {
-            container.removeChild(container.lastElementChild);
+        
+        // 获取最后一个元素
+        const lastEl = container.lastElementChild;
+        if (!lastEl) return;
+
+        // 判断身份
+        const isAiGroup = lastEl.dataset.sender === 'ai'; 
+        const isAiBubble = lastEl.classList.contains('ai'); // 兼容旧代码
+
+        // 只要最后一个是 AI 发的，就删掉这一个（因为这一个里面包含了整组切分后的句子）
+        if (isAiGroup || isAiBubble) {
+            lastEl.remove();
+            // 关键：不要用 while 循环，删一次就够了！
         }
     },
 
@@ -1830,47 +1898,69 @@ const App = {
         alert(`设置已保存！`);
     },
 
-/*1212*/
+    /*1212*/
+    // 【7. APP CONTROLLER】
     handleMessageAction(action) {
-        const index = STATE.selectedMessageIndex;
-        if (index === null || index < 0) return;
+        // 1. 获取选中索引
+        const msgIndex = STATE.selectedMessageIndex;
 
-        const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
-        if (!contact || !contact.history[index]) return;
+        // 2. 获取当前角色
+        const currentId = STATE.currentContactId;
+        const currentContact = STATE.contacts.find(c => c.id === currentId);
 
-        const msg = contact.history[index];
+        if (!currentContact) {
+            console.error("错误：找不到当前角色");
+            return;
+        }
 
-        if (action === 'copy') {
-            navigator.clipboard.writeText(msg.content.replace(/^\[[^\]]+\]\s*/, '')).then(() => {
-                alert('已复制到剪贴板');
+        // --- 核心数据获取 ---
+        const msgData = currentContact.history[msgIndex]; 
+
+        if (!msgData) {
+            console.error("找不到该条消息，索引:", msgIndex);
+            return;
+        }
+
+        // 3. 执行动作
+        if (action === 'edit') {
+            UI.showEditModal(msgData.content, (newText) => {
+                if (newText && newText !== msgData.content) {
+                    msgData.content = newText;
+                    Storage.saveContacts(); 
+                    UI.renderChatHistory(currentContact);
+                }
             });
         } 
+        
+        // ================== 修改了下面这两部分 ==================
+        
         else if (action === 'delete') {
-            if (confirm('确定删除这条消息吗？')) {
-                contact.history.splice(index, 1);
+            // ★ 修改点1：添加 confirm 确认弹窗
+            // 只有用户点击“确定”，才会执行删除逻辑
+            if (confirm("确定要删除这条消息吗？")) {
+                currentContact.history.splice(msgIndex, 1);
+                
                 Storage.saveContacts();
-                UI.renderChatHistory(contact);
-                this.hideMessageContextMenu();
+                UI.renderChatHistory(currentContact);
+                
+                // 如果删除成功也想提示，可以解开下面这行注释：
+                // alert("删除成功");
             }
-        } 
-        else if (action === 'edit') {
-            const cleanContent = msg.content.replace(/^\[[^\]]+\]\s*/, '');  // 去掉时间戳
-            const newText = prompt('编辑消息内容：', cleanContent);
-            if (newText !== null && newText.trim() !== cleanContent) {
-                // 如果是用户消息，保留时间戳；AI 消息直接改
-                if (msg.role === 'user') {
-                    const timestampMatch = msg.content.match(/^\[([^\]]+)\]/);
-                    const timestamp = timestampMatch ? timestampMatch[0] : formatTimestamp();
-                    msg.content = `[${timestamp.slice(1, -1)}] ${newText.trim()}`;
-                } else {
-                    msg.content = newText.trim();
-                }
-                Storage.saveContacts();
-                UI.renderChatHistory(contact);
-            }
-            this.hideMessageContextMenu();
+        }
+        else if (action === 'copy') {
+            navigator.clipboard.writeText(msgData.content)
+                .then(() => {
+                    // ★ 修改点2：复制成功后弹出提示
+                    alert("复制成功！"); 
+                    // 如果觉得 alert 太丑，也可以用你自己写的 UI.showToast("复制成功") 之类的
+                })
+                .catch(err => {
+                    console.error("复制失败:", err);
+                    alert("复制失败，请重试");
+                });
         }
     },
+
 
     hideMessageContextMenu() {
         if (this.els.msgContextMenu) {
@@ -1880,23 +1970,29 @@ const App = {
     },
 
 
+    // 【7. APP CONTROLLER】
     showMessageContextMenu(msgIndex, rect) {
         STATE.selectedMessageIndex = msgIndex;
 
         const menu = document.getElementById('msg-context-menu');
 
-        // 事件绑定（保持不变）
+        // --- 事件绑定区域 (保持你原有的逻辑不变，只绑定一次) ---
         if (!menu.dataset.initialized) {
             menu.dataset.initialized = 'true';
             menu.addEventListener('click', e => {
                 const btn = e.target.closest('button');
                 if (!btn) return;
                 const action = btn.dataset.action;
+                // 如果处于防误触锁定状态，直接无视点击
+                if (menu.classList.contains('locked')) return; 
+
                 if (action === 'cancel') {
                     this.hideMessageContextMenu();
                     return;
                 }
-                this.handleMessageAction(action);
+                // 这里的 this 需要确保指向 Controller 实例
+                // 如果是在回调里，可能需要用 App.handleMessageAction 或箭头函数上下文
+                this.handleMessageAction(action); 
                 this.hideMessageContextMenu();
             });
             menu.querySelector('.menu-backdrop').addEventListener('click', () => {
@@ -1904,13 +2000,18 @@ const App = {
             });
         }
 
+        // --- ★★★★★ 核心修改：防误触锁 ★★★★★ ---
         
-
-        // ★★★★★ 关键三行：显示 + 可点 + 最顶级 ★★★★★
-        menu.style.display = 'flex';
-
-        // 可选：如果你想更保险，可以再加背景（测试用）
-        // menu.querySelector('.menu-backdrop').style.background = 'rgba(0,0,0,0.6)';
+        // 1. 先加上锁定 class (或者直接用 style)
+        menu.classList.add('locked');
+        menu.style.pointerEvents = 'none'; // 物理禁用点击
+        menu.style.display = 'flex';       // 显示出来
+        
+        // 2. 300毫秒后解锁
+        setTimeout(() => {
+            menu.classList.remove('locked');
+            menu.style.pointerEvents = 'auto'; // 恢复点击
+        }, 300);
     },
 
     // 隐藏方法
@@ -2065,29 +2166,65 @@ const App = {
         const userUpBtn = document.getElementById('user-avatar-upload-btn');
         if(userUpBtn) userUpBtn.onclick = () => document.getElementById('user-avatar-file').click();
 
-        // 长按相关变量
-        let longPressTimer = null;
-        const LONG_PRESS_DURATION = 600;
 
+        // --- 长按相关变量 (优化版) ---
+        let longPressTimer = null;
+        let startX = 0;
+        let startY = 0;
+        const LONG_PRESS_DURATION = 380;
+
+        // 1. 触摸开始
         UI.els.chatMsgs.addEventListener('touchstart', e => {
             const bubble = e.target.closest('.message-bubble');
-            if (!bubble) return;
+            // 如果点的不是气泡，或者已经有选中的文字(用户想调整选区)，则不触发自定义长按
+            if (!bubble || window.getSelection().toString().length > 0) return;
             
             const msgIndex = parseInt(bubble.dataset.msgIndex);
             if (isNaN(msgIndex)) return;
 
-            e.preventDefault(); // 这里必须 preventDefault，防止长按选中文字
+            // 记录起始坐标，用于判断是否是滑动
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+
+            // ★★★ 关键修改 1：去掉 e.preventDefault() ★★★
+            // 这样系统原本的长按选词、复制菜单、页面滚动都能正常工作
+            
             longPressTimer = setTimeout(() => {
-                App.showMessageContextMenu(msgIndex, bubble.getBoundingClientRect());  // 注意：这里要用 App.
+                // ★★★ 关键修改 2：触发前再次检查是否有选中文本 ★★★
+                // 如果用户长按是为了选字（系统菜单会出现），我们就不弹编辑窗了，防止两个菜单重叠
+                if (window.getSelection().toString().length > 0) return;
+
+                // 弹出你的自定义菜单
+                App.showMessageContextMenu(msgIndex, bubble.getBoundingClientRect());
             }, LONG_PRESS_DURATION);
-        }, { passive: false });  // ← 明确告诉浏览器：这个会 preventDefault
 
-        UI.els.chatMsgs.addEventListener('touchend', () => clearTimeout(longPressTimer), { passive: true });
-        UI.els.chatMsgs.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });  // ← 这个可以 passive
+        }, { passive: true }); // ★★★ 关键修改 3：passive: true 让滚动更丝滑 ★★★
 
-        // 桌面鼠标模拟长按
+        // 2. 触摸移动 (解决滑动卡顿的核心)
+        UI.els.chatMsgs.addEventListener('touchmove', e => {
+            if (!longPressTimer) return;
+
+            const moveX = e.touches[0].clientX;
+            const moveY = e.touches[0].clientY;
+
+            // 如果移动距离超过 10px，说明用户是在滑动页面，而不是长按
+            if (Math.abs(moveX - startX) > 10 || Math.abs(moveY - startY) > 10) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }, { passive: true });
+
+        // 3. 触摸结束
+        UI.els.chatMsgs.addEventListener('touchend', () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }, { passive: true });
+
+        // 4. 桌面端鼠标长按 (保持不变，或根据需要优化)
         UI.els.chatMsgs.addEventListener('mousedown', e => {
-            if (e.button !== 0) return; // 只左键
+            if (e.button !== 0) return; 
             const bubble = e.target.closest('.message-bubble');
             if (!bubble) return;
             
@@ -2095,9 +2232,10 @@ const App = {
             if (isNaN(msgIndex)) return;
 
             longPressTimer = setTimeout(() => {
+                // 桌面端同理，如果选了字就不弹窗
+                if (window.getSelection().toString().length > 0) return;
                 App.showMessageContextMenu(msgIndex, bubble.getBoundingClientRect());
             }, LONG_PRESS_DURATION);
-            
         });
 
         UI.els.chatMsgs.addEventListener('mouseup', () => clearTimeout(longPressTimer));
