@@ -611,6 +611,18 @@ const API = {
         return await res.json();
     },
 
+    // 在 API 类内部添加一个估算 Token 的辅助函数
+// 1. 新增：放在 API 类里面的辅助函数，用来估算 Token
+    estimateTokens(text) {
+        if (!text) return 0;
+        // 简单粗暴的估算公式：
+        // 中文/日文/韩文 (CJK) 算 1.8 个 Token
+        // 英文/数字/符号 算 0.35 个 Token (约3个字母=1Token)
+        const cjkCount = (text.match(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g) || []).length;
+        const otherCount = text.length - cjkCount;
+        return Math.ceil(cjkCount * 1.8 + otherCount * 0.35);
+    },
+
     async chat(messages, settings) {
         const { API_URL, API_KEY, MODEL } = settings;
         const provider = this.getProvider(API_URL);
@@ -653,7 +665,27 @@ const API = {
             });
         }
 
-        console.log(`[${provider}] Sending...`, JSON.parse(options.body));
+            
+        // ==========================================
+        //  核心修改在这里：同时保留 Console 和 UI 日志
+        // ==========================================
+        
+        // 1. 先把字符串转回对象，方便处理
+        const rawBody = JSON.parse(options.body);
+        
+        // 2.【保留你的功能】：F12 控制台打印
+        // 这里的 rawBody 就是 JSON.parse(options.body)，效果完全一样
+        console.log(`[${provider}] Sending...`, rawBody);
+
+        // 3.【新增功能】：格式化并保存到全局变量，给“查看日志”按钮用
+        const jsonStr = JSON.stringify(rawBody, null, 2); // null, 2 让排版变漂亮
+        window.LAST_API_LOG = {
+            content: jsonStr,
+            tokens: this.estimateTokens(jsonStr) // 计算并保存 Token 数
+        };
+
+        // ==========================================
+
 
         const response = await fetch(fetchUrl, options);
         if (!response.ok) {
@@ -2241,6 +2273,38 @@ const App = {
         UI.els.chatMsgs.addEventListener('mouseup', () => clearTimeout(longPressTimer));
         UI.els.chatMsgs.addEventListener('mouseleave', () => clearTimeout(longPressTimer));
 
+
+        // 日志
+        // 1. 打开日志弹窗的按钮
+        document.getElementById('btn-show-log').addEventListener('click', () => {
+            const logModal = document.getElementById('log-display-modal');
+            const logContent = document.getElementById('log-content');
+            const logToken = document.getElementById('log-token-count');
+            
+            // 从全局变量读取刚才 API 存进去的数据
+            if (window.LAST_API_LOG) {
+                logContent.innerText = window.LAST_API_LOG.content;
+                logToken.innerText = `(估算 Tokens: ${window.LAST_API_LOG.tokens})`;
+            } else {
+                logContent.innerText = "本次会话尚未发送过消息，暂无日志。";
+                logToken.innerText = "(Token: 0)";
+            }
+            
+            logModal.classList.remove('hidden');
+        });
+
+        // 2. 关闭日志弹窗的按钮 (右上角 X)
+        document.getElementById('btn-close-log').addEventListener('click', () => {
+            document.getElementById('log-display-modal').classList.add('hidden');
+        });
+
+        // 3. (可选) 点击遮罩层也可以关闭
+        document.getElementById('log-display-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'log-display-modal') {
+                e.target.classList.add('hidden');
+            }
+        });
+
         // Gist Events
         const gistFind = document.getElementById('gist-find');
         if(gistFind) gistFind.onclick = () => CloudSync.findBackup();
@@ -2323,23 +2387,39 @@ const App = {
         const userPreview = document.getElementById('user-avatar-preview');
         if(userPreview) userPreview.src = STATE.settings.USER_AVATAR || 'user.jpg';
 
+        // 获取新增的日志区域元素
+        const logSection = document.getElementById('log-section');
+
         if (id) {
+            // === 编辑模式 (在聊天界面打开) ===
             const c = STATE.contacts.find(x => x.id === id);
-            title.innerText = '编辑角色';
+            title.innerText = '聊天菜单'; // 你说你想改成聊天菜单
             iName.value = c.name;
             iAvatar.value = c.avatar;
             iPrompt.value = c.prompt;
             preview.src = (c.avatar.startsWith('data:') || c.avatar.startsWith('http')) ? c.avatar : '';
+            
+            // 显示危险区域
             document.getElementById('modal-delete').style.display = 'block';
             document.getElementById('modal-clear-history').style.display = 'block';
+
+            // 【新增】：显示日志按钮
+            if (logSection) logSection.style.display = 'block';
+
         } else {
+            // === 新建模式 ===
             title.innerText = '新建角色';
             iName.value = '';
             iAvatar.value = '🙂';
             iPrompt.value = '你是一个...';
             preview.src = '';
+            
+            // 隐藏危险区域
             document.getElementById('modal-delete').style.display = 'none';
             document.getElementById('modal-clear-history').style.display = 'none';
+
+            // 【新增】：隐藏日志按钮 (新建时没有日志可看)
+            if (logSection) logSection.style.display = 'none';
         }
     },
 

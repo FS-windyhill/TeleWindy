@@ -6,7 +6,7 @@
     <title>TeleWindy</title>
     
     <!-- PWA 相关 -->
-    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./icon192.png">
     <link rel="apple-touch-icon" href="./icon192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -143,6 +143,16 @@
                 <button id="modal-cancel">取消</button>
                 <button id="modal-save" class="primary">保存</button>
             </div>
+
+
+            <!-- 【新增区域】：上下文日志按钮 -->
+            <div id="log-section" class="input-group log-section">
+                <label>调试信息</label>
+                <button id="btn-show-log" class="small-btn log-show-btn">
+                    查看上一轮发送的上下文
+                </button>
+            </div>
+
             
             <div class="modal-danger-zone">
                 <button id="modal-clear-history" class="danger-btn outline">清空聊天记录</button>
@@ -401,7 +411,7 @@
                                 
                                 <!-- A. 本书全局设定 -->
                                 <div class="wi-section-card">
-                                    <h4 class="wi-section-title">📚 本书设定 <span class="sub-text">(对整本书生效)</span></h4>
+                                    <h4 class="wi-section-title">本书设定 <span class="sub-text">(对整本书生效)</span></h4>
                                     <label class="wi-input-row">
                                         <span>生效范围:</span>
                                         <select id="wi-book-char-select" class="wi-select setting-input">
@@ -414,7 +424,7 @@
                                 <!-- B. 单个条目编辑 -->
                                 <div class="wi-edit-area">
                                     <div class="wi-edit-header">
-                                        <h4 class="wi-section-title">📝 条目编辑</h4>
+                                        <h4 class="wi-section-title">条目编辑</h4>
                                         <div class="wi-checkbox-wrapper">
                                             <input type="checkbox" id="wi-edit-constant">
                                             <label for="wi-edit-constant">常驻 (无视关键词，永远生效)</label>
@@ -485,6 +495,30 @@
             <div class="edit-buttons">
                 <button id="btn-edit-cancel">取消</button>
                 <button id="btn-edit-confirm" class="primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+   
+    <!-- 【新增弹窗】：专门用于显示日志的弹窗 -->
+    <div id="log-display-modal" class="log-modal hidden">
+        <div class="glass-panel log-modal-content">
+            <!-- 顶部：标题和关闭按钮 -->
+            <div class="log-modal-header">
+                <h3 class="shangxiawen">上下文日志 
+                    <span id="log-token-count">(Token: 0)</span>
+                </h3>
+                <button id="btn-close-log" class="log-close-btn">&times;</button>
+            </div>
+            
+            <!-- 内容区域：可滚动 -->
+            <div class="log-modal-body">
+                <pre><code id="log-content">暂无发送记录...</code></pre>
+            </div>
+            
+            <!-- 底部说明 -->
+            <div class="log-modal-footer">
+                * Token 为本地估算值，仅供参考。
             </div>
         </div>
     </div>
