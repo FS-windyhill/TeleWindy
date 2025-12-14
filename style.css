@@ -2217,7 +2217,7 @@ body.dark-mode #wi-list-container > div {
 }
 
 .message-bubble:active {
-    transform: scale(1.015);  /* 长按放大效果 */
+    opacity: 0.8;  /* 长按效果 */
 }
 
 .selectable-message {

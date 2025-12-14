@@ -1,131 +1,114 @@
 /*
  * =========================================
- * 代码目录结构树（中文版）
+ * 树状代码目录 (TeleWindy 项目结构)
  * =========================================
  *
- * ├── 1. CONFIG & STATE (配置与状态)
- * │   ├── CONFIG                  // 全局配置常量
- * │   │   ├── STORAGE_KEY
- * │   │   ├── SETTINGS_KEY
- * │   │   ├── WORLD_INFO_KEY
- * │   │   ├── GIST_ID_KEY
- * │   │   ├── DEFAULT             // 默认配置对象
- * │   │   └── SYSTEM_PROMPT       // 系统提示词
- * │   └── STATE                   // 运行时状态
- * │       ├── contacts
- * │       ├── worldInfoBooks
- * │       ├── currentContactId
- * │       ├── currentBookId
- * │       ├── settings
- * │       └── isTyping
+ * 1. CONFIG & STATE (配置与状态)
+ *    ├─ CONFIG 对象
+ *    │   └─ SYSTEM_PROMPT (系统提示词)
+ *    └─ STATE 对象 (运行时状态)
  *
- * ├── 1.5. DB UTILS (IndexedDB 简易封装)
- * │   └── DB
- * │       ├── open()
- * │       ├── get(key)
- * │       ├── set(key, value)
- * │       ├── remove(key)
- * │       ├── clear()
- * │       └── exportAll()
+ * 1.5. DB UTILS (IndexedDB 简易封装)
+ *    ├─ open()          → 打开数据库
+ *    ├─ get(key)        → 读取数据
+ *    ├─ set(key, value) → 写入数据
+ *    ├─ remove(key)     → 删除数据
+ *    ├─ clear()         → 清空数据库
+ *    └─ exportAll()     → 导出所有数据（使用游标）
  *
- * ├── 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
- * │   └── Storage
- * │       ├── load()                     // 初始化加载所有数据（含迁移逻辑）
- * │       ├── saveContacts()
- * │       ├── saveSettings()
- * │       ├── saveWorldInfo()
- * │       ├── exportAllForBackup()       // 导出备份（含Token加密）
- * │       └── importFromBackup(data)     // 导入备份（含Token解密）
+ * 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
+ *    ├─ load()                  → 初始化加载所有数据（设置、联系人、世界书 + 数据迁移）
+ *    ├─ saveContacts()          → 保存联系人
+ *    ├─ saveSettings()          → 保存设置
+ *    ├─ saveWorldInfo()         → 保存世界书
+ *    ├─ exportAllForBackup()    → 导出备份（含 Token 加密）
+ *    └─ importFromBackup(data)  → 导入备份（含 Token 解密）
  *
- * ├── 3. WORLD INFO ENGINE (世界书引擎，已修正)
- * │   └── WorldInfoEngine
- * │       ├── importFromST(jsonString, fileName)  // 从ST格式导入
- * │       ├── exportToST(book)                    // 导出为ST格式
- * │       └── scan(userText, history, currentContactId, currentContactName)  // 扫描触发世界书内容
+ * 3. WORLD INFO ENGINE (世界书引擎)
+ *    ├─ importFromST(jsonString, fileName) → 从 SillyTavern 格式导入世界书
+ *    ├─ exportToST(book)                   → 导出为 SillyTavern 格式
+ *    └─ scan(userText, history, currentContactId, currentContactName)
+ *                                          → 扫描上下文并注入触发的内容
  *
- * ├── 4. API SERVICE (LLM通信)
- * │   └── API
- * │       ├── getProvider(url)
- * │       ├── fetchModels(url, key)
- * │       └── chat(messages, settings)   // 统一处理OpenAI/Claude/Gemini三种接口
+ * 4. API SERVICE (LLM 通信)
+ *    ├─ getProvider(url)      → 判断 API 提供商 (claude/gemini/openai)
+ *    ├─ fetchModels(url, key) → 拉取可用模型列表
+ *    ├─ estimateTokens(text)  → 估算 Token 数量（中英文分开计算）
+ *    └─ chat(messages, settings) → 核心聊天请求（支持多种提供商 + 日志记录）
  *
- * ├── 5. CLOUD SYNC (云同步 - Gist & 自定义服务器混合版)
- * │   └── CloudSync
- * │       ├── init()
- * │       ├── toggleMode()
- * │       ├── showStatus(msg, isError)
- * │       ├── getAuth()
- * │       ├── _maskToken(token) / _unmaskToken(maskedToken)  // Token混淆防扫描
- * │       ├── _preparePayload()
- * │       ├── updateBackup()             // 主入口：根据模式选择上传方式
- * │       ├── findBackup()               // 自动查找Gist备份
- * │       ├── restoreBackup()
- * │       ├── _safeRestore(data)
- * │       ├── _uploadToCustom()
- * │       ├── _fetchFromCustom(password)
- * │       ├── _uploadToGist()
- * │       └── _fetchFromGist(token)
+ * 5. CLOUD SYNC (云同步 - Gist / 自定义服务器混合版)
+ *    ├─ init()                  → 初始化 UI 与恢复状态
+ *    ├─ toggleMode()            → 切换同步模式（Gist ↔ 自定义）
+ *    ├─ showStatus(msg, isError)→ 显示同步状态
+ *    ├─ getAuth()               → 安全获取 Token/密码
+ *    ├─ _maskToken() / _unmaskToken() → Token 混淆/解混淆（防泄露）
+ *    ├─ _preparePayload()       → 准备上传数据（含混淆）
+ *    ├─ updateBackup()          → 主入口：根据模式上传
+ *    ├─ findBackup()            → 自动查找 GitHub Gist 备份
+ *    ├─ restoreBackup()         → 恢复备份
+ *    ├─ _safeRestore(data)      → 安全恢复（防空间不足）
+ *    ├─ _uploadToCustom()       → 自定义服务器上传
+ *    ├─ _fetchFromCustom()      → 自定义服务器下载
+ *    ├─ _uploadToGist()         → GitHub Gist 上传/更新
+ *    └─ _fetchFromGist()        → GitHub Gist 下载
  *
- * ├── 6. UI RENDERER (DOM 操作与渲染)
- * │   └── UI
- * │       ├── init()
- * │       ├── applyAppearance()
- * │       ├── toggleTheme(newTheme)
- * │       ├── switchView(viewName)
- * │       ├── renderContacts()
- * │       ├── renderBookSelect()
- * │       ├── updateCurrentBookSettingsUI()
- * │       ├── renderWorldInfoList()
- * │       ├── initWorldInfoTab()
- * │       ├── createSingleBubble(...)
- * │       ├── showEditModal(oldText, onConfirmCallback)
- * │       ├── removeLatestAiBubbles()
- * │       ├── renderChatHistory(contact)
- * │       ├── appendMessageBubble(...)
- * │       ├── scrollToBottom()
- * │       ├── setLoading(isLoading)
- * │       ├── updateRerollState(contact)
- * │       ├── playWaterfall(fullText, avatar, timestamp)
- * │       └── renderPresetMenu()
+ * 6. UI RENDERER (界面渲染与 DOM 操作)
+ *    ├─ init()                       → 初始化外观与联系人列表
+ *    ├─ applyAppearance()            → 应用主题与壁纸
+ *    ├─ toggleTheme(newTheme)        → 切换日夜模式
+ *    ├─ switchView(viewName)         → 切换列表 ↔ 聊天视图
+ *    ├─ renderContacts()             → 渲染联系人侧边栏
+ *    ├─ renderBookSelect()           → 渲染世界书下拉框
+ *    ├─ updateCurrentBookSettingsUI()→ 更新当前书绑定角色 UI
+ *    ├─ renderWorldInfoList()        → 渲染世界书条目列表
+ *    ├─ initWorldInfoTab()           → 初始化世界书 Tab 页面
+ *    ├─ renderChatHistory(contact)   → 渲染完整聊天记录
+ *    ├─ createSingleBubble(...)      → 创建单个消息气泡
+ *    ├─ appendMessageBubble(...)     → 追加消息气泡（支持分段）
+ *    ├─ showEditModal(...)           → 显示消息编辑弹窗
+ *    ├─ removeLatestAiBubbles()      → 删除最新 AI 消息组（用于重滚）
+ *    ├─ scrollToBottom()             → 滚动到底部
+ *    ├─ setLoading(isLoading)        → 设置“正在输入”状态
+ *    ├─ updateRerollState(contact)   → 更新重滚按钮状态
+ *    ├─ playWaterfall(fullText, ...) → 瀑布流逐段显示 AI 回复
+ *    └─ renderPresetMenu()           → 渲染 API 预设下拉菜单
  *
- * ├── 7. APP CONTROLLER (主业务逻辑控制器)
- * │   └── App
- * │       ├── init()                     // 应用启动入口
- * │       ├── enterChat(id)
- * │       ├── handleSend(isReroll)
- * │       ├── openSettings()
- * │       ├── switchWorldInfoBook(bookId)
- * │       ├── bindCurrentBookToChar(charId)
- * │       ├── loadWorldInfoEntry(uid)
- * │       ├── saveWorldInfoEntry()
- * │       ├── deleteWorldInfoEntry()
- * │       ├── clearWorldInfoEditor()
- * │       ├── createNewBook()
- * │       ├── renameCurrentBook()
- * │       ├── deleteCurrentBook()
- * │       ├── exportCurrentBook()
- * │       ├── handleImportWorldInfo(file)
- * │       ├── handleSavePreset()
- * │       ├── handleLoadPreset(index)
- * │       ├── handleDeletePreset()
- * │       ├── saveSettingsFromUI()
- * │       ├── handleMessageAction(action)   // 编辑/删除/复制消息
- * │       ├── showMessageContextMenu(msgIndex, rect)
- * │       ├── hideMessageContextMenu()
- * │       ├── bindEvents()               // 集中绑定所有DOM事件
- * │       ├── readFile(file)
- * │       ├── fetchModelsForUI()
- * │       ├── bindImageUpload(...)
- * │       ├── openEditModal(id)
- * │       └── saveContactFromModal()
+ * 7. APP CONTROLLER (核心业务逻辑)
+ *    ├─ init()                          → 应用启动入口（加载数据 → 初始化 UI → 绑定事件）
+ *    ├─ enterChat(id)                   → 进入指定聊天
+ *    ├─ handleSend(isReroll)            → 发送消息 / 重滚
+ *    ├─ openSettings()                  → 打开主设置弹窗
+ *    ├─ switchWorldInfoBook(bookId)     → 切换当前世界书
+ *    ├─ bindCurrentBookToChar(charId)   → 绑定当前书到角色
+ *    ├─ loadWorldInfoEntry(uid)         → 加载条目到编辑器
+ *    ├─ saveWorldInfoEntry()            → 保存条目（含名称逻辑）
+ *    ├─ deleteWorldInfoEntry()          → 删除条目
+ *    ├─ clearWorldInfoEditor()          → 清空编辑器
+ *    ├─ createNewBook()                 → 新建世界书
+ *    ├─ renameCurrentBook()             → 重命名当前书
+ *    ├─ deleteCurrentBook()             → 删除当前书
+ *    ├─ exportCurrentBook()             → 导出当前书为 ST 格式
+ *    ├─ handleImportWorldInfo(file)     → 导入 ST 世界书
+ *    ├─ handleSavePreset()              → 保存 API 预设
+ *    ├─ handleLoadPreset(index)         → 加载 API 预设
+ *    ├─ handleDeletePreset()            → 删除 API 预设
+ *    ├─ saveSettingsFromUI()            → 从设置界面保存
+ *    ├─ handleMessageAction(action)     → 处理消息右键操作（编辑/删除/复制）
+ *    ├─ showMessageContextMenu(...)     → 显示消息上下文菜单（含防误触）
+ *    ├─ hideMessageContextMenu()        → 隐藏上下文菜单
+ *    ├─ bindEvents()                    → 集中绑定所有 DOM 事件
+ *    ├─ readFile(file)                  → 读取文件为 base64
+ *    ├─ fetchModelsForUI()              → UI 中拉取模型列表
+ *    ├─ bindImageUpload(...)            → 绑定图片上传逻辑
+ *    ├─ openEditModal(id)               → 打开角色编辑弹窗
+ *    └─ saveContactFromModal()          → 保存角色修改
  *
- * └── 8. UTILS & EXPORTS (工具函数与全局导出)
- *     ├── formatTimestamp()
- *     ├── window.exportData()            // 全局导出备份函数
- *     └── window.importData(input)       // 全局导入备份函数
- *     └── window.onload → App.init()     // 页面加载完成启动应用
+ * 8. UTILS & EXPORTS (工具函数与全局导出)
+ *    ├─ formatTimestamp()               → 格式化时间戳
+ *    ├─ window.exportData()             → 全局导出备份函数
+ *    └─ window.importData(input)        → 全局导入备份函数
  *
- * =========================================
+ * 启动：window.onload = () => App.init();
  */
 
 // =========================================
@@ -1371,37 +1354,43 @@ const UI = {
         this.scrollToBottom();
         this.updateRerollState(contact);
     },
-
-/* 1212*/
+    
+/* 1212 - Fixed */
     appendMessageBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex = null) {
-        // 如果没传 historyIndex，就尝试自动获取（用于实时发送新消息）
-        if (historyIndex === null) {
+        // 1. 安全检查：如果未传入 historyIndex，尝试自动获取
+        if (historyIndex === null || historyIndex === undefined) {
             const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
             if (contact && contact.history.length > 0) {
-                historyIndex = contact.history.length - 1;  // 最后一条
+                // 注意：如果是在 push 之前调用这里，这个 index 指向的是上一条
+                // 所以必须确保像上面 handleSend 那样先 push 再调用
+                historyIndex = contact.history.length - 1; 
             } else {
-                historyIndex = -1;
+                historyIndex = 0; // 防止 -1 导致找不到
             }
         }
 
-        // 创建单个气泡（核心逻辑已提取）
+        // 创建单个气泡
         const clone = this.createSingleBubble(text, sender, aiAvatarUrl, timestampRaw, historyIndex);
 
-        // 查找是否已有同一个消息的 group
+        // 2. 查找 DOM 中是否已经存在【相同 Index】的消息组
+        // 这里必须严格匹配 data-msg-index，确保多段落被合并到同一个组
         const existingGroup = Array.from(this.els.chatMsgs.children)
-            .reverse()
+            .reverse() // 从最新的往回找，效率高
             .find(group => group.classList.contains('message-group') && 
-                        parseInt(group.dataset.msgIndex) === historyIndex);
+                        parseInt(group.dataset.msgIndex) === historyIndex); // 严格匹配 ID
 
         if (existingGroup) {
-            // 如果已经存在 group，直接追加到里面（同一个消息的后续段落）
+            // 找到了同属一条历史记录的组，追加进去
             existingGroup.appendChild(clone);
         } else {
-            // 否则新建一个 group
+            // 没找到（说明是该条消息的第一个段落），新建组
             const group = document.createElement('div');
             group.className = 'message-group';
-            group.dataset.msgIndex = historyIndex;
+            
+            // ★★★ 关键：将正确的 index 写入 DOM ★★★
+            group.dataset.msgIndex = historyIndex; 
             group.dataset.sender = sender;
+            
             group.appendChild(clone);
             this.els.chatMsgs.appendChild(group);
         }
@@ -1531,21 +1520,32 @@ const App = {
             }
             UI.removeLatestAiBubbles(); 
         } else {
+            // ================== 【修复开始】 ==================
             if (!userText) return;
+
+            // 1. 先把消息存入 history
+            const newUserMsg = { role: 'user', content: `[${timestamp}] ${userText}`, timestamp: timestamp };
+            contact.history.push(newUserMsg);
             
+            // 2. 获取这条消息确切的 index (当前长度 - 1)
+            const currentMsgIndex = contact.history.length - 1;
+
+            // 3. 处理 UI 渲染，必须传入 currentMsgIndex
             const paragraphs = userText.split(/\n\s*\n/).filter(p => p.trim());
             if (paragraphs.length > 0) {
-                paragraphs.forEach(p => UI.appendMessageBubble(p.trim(), 'user', null, timestamp));
+                // 这里的 index 传进去，UI 就知道这是第几条消息了
+                paragraphs.forEach(p => UI.appendMessageBubble(p.trim(), 'user', null, timestamp, currentMsgIndex));
             } else {
-                UI.appendMessageBubble(userText, 'user', null, timestamp);
+                UI.appendMessageBubble(userText, 'user', null, timestamp, currentMsgIndex);
             }
 
-            contact.history.push({ role: 'user', content: `[${timestamp}] ${userText}`, timestamp: timestamp });
+            // 4. 清理输入框
             UI.els.input.value = '';            
             UI.els.input.style.height = '38px'; 
             
             if (window.innerWidth < 800) UI.els.input.blur();
             else UI.els.input.focus(); 
+            // ================== 【修复结束】 ==================
         }        
 
         await Storage.saveContacts();
@@ -1566,7 +1566,6 @@ const App = {
                 }
             });
         
-        // ★★★ 世界书注入逻辑 ★★★
         const worldInfoPrompt = WorldInfoEngine.scan(userText, recentHistory, contact.id, contact.name);
         
         const messagesToSend = [
@@ -1587,14 +1586,25 @@ const App = {
         try {
             const aiText = await API.chat(messagesToSend, STATE.settings);
             const aiTimestamp = formatTimestamp();
+            
+            // AI 消息部分同理，先存后显，但由于 playWaterfall 内部实现未展示，
+            // 只要 playWaterfall 是在 push 之后调用的，且如果不传 index 它取最后一条，逻辑就是对的。
             contact.history.push({ role: 'assistant', content: aiText, timestamp: aiTimestamp });
+            
             await Storage.saveContacts();
             UI.setLoading(false);
-            await UI.playWaterfall(aiText, contact.avatar, aiTimestamp)
+            
+            // 确保 playWaterfall 能处理正确的 index (通常它处理最新的)
+            await UI.playWaterfall(aiText, contact.avatar, aiTimestamp); 
+            
         } catch (error) {
             console.error(error);
             UI.setLoading(false);
-            UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar);
+            
+            // 出错信息也建议绑定到当前最后一条（或者不绑定）
+            // 这里为了安全，暂时让它浮空或者绑定到最后
+            const errorIndex = contact.history.length > 0 ? contact.history.length - 1 : 0;
+            UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar, null, errorIndex);
         } finally {
             UI.updateRerollState(contact);
             if (window.innerWidth >= 800) UI.els.input.focus();
