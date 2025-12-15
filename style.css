@@ -2571,35 +2571,47 @@ body.dark-mode .edit-buttons .primary {
 
 
 /* 加载更多消息 */
-/* 加载更多按钮样式 */
 .load-more-btn {
     text-align: center;
-    padding: 10px;
-    margin: 10px auto;
+    padding: 4px 15px;
+    margin: 0px auto 10px auto;
     font-size: 12px;
-    color: #888;
+    color: #ffffffd8;
+    border: 1px solid rgba(255, 255, 255, 0.5);
     cursor: pointer;
-    background-color: rgba(0, 0, 0, 0.03); /* 轻微背景 */
-    border-radius: 15px;
+    background-color: rgba(165, 165, 165, 0.5);
+    border-radius: 30px;
     width: fit-content;
     user-select: none;
+    display: flex;
     transition: all 0.2s;
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+
 }
 
 .load-more-btn:hover {
-    background-color: rgba(0, 0, 0, 0.08);
-    color: #555;
+    opacity: 0.7;
 }
 
 /* 适配暗色模式（如果你有做暗色模式的话） */
-body.dark-theme .load-more-btn {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #aaa;
+body.dark-mode .load-more-btn {
+    text-align: center;
+    padding: 4px 15px;
+    margin: 0px auto 10px auto;
+    font-size: 12px;
+    color: #ffffffd8;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    background-color: rgba(91, 91, 91, 0.5);
+    border-radius: 30px;
+    width: fit-content;
+    user-select: none;
+    display: flex;
+    transition: all 0.2s;
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+
 }
-body.dark-theme .load-more-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
+
 
 
 
