@@ -152,7 +152,7 @@ const STATE = {
     currentContactId: null,
     currentBookId: null, // ★★★ 新增：当前正在编辑哪本书
     settings: {}, 
-    isTyping: false,
+    typingContactId: null, // ★★★ 新增：用于追踪哪个联系人正在输入，null表示无人输入
     visibleMsgCount: 15 // ★★★ 新增：当前聊天窗口显示的条数，默认为15
 };
 
@@ -660,19 +660,42 @@ const API = {
         //  核心修改在这里：同时保留 Console 和 UI 日志
         // ==========================================
         
-        // 1. 先把字符串转回对象，方便处理
-        const rawBody = JSON.parse(options.body);
-        
-        // 2.【保留你的功能】：F12 控制台打印
-        // 这里的 rawBody 就是 JSON.parse(options.body)，效果完全一样
-        console.log(`[${provider}] Sending...`, rawBody);
 
-        // 3.【新增功能】：格式化并保存到全局变量，给“查看日志”按钮用
-        const jsonStr = JSON.stringify(rawBody, null, 2); // null, 2 让排版变漂亮
-        window.LAST_API_LOG = {
-            content: jsonStr,
-            tokens: this.estimateTokens(jsonStr) // 计算并保存 Token 数
-        };
+        try {
+            // 我们“尝试”执行这些可能会出错的代码
+            let requestBodyObject = options.body; // 默认它就是个对象
+
+            // ★ 关键检查：如果它是个字符串，我们才需要 parse
+            if (typeof options.body === 'string') {
+                requestBodyObject = JSON.parse(options.body);
+            }
+            
+            // 1.【你的功能】：F12 控制台打印
+            // 现在我们打印的是确认过的、绝对是对象的 requestBodyObject
+            console.log(`[${provider}] Sending...`, requestBodyObject);
+
+            // 2.【新增功能】：格式化并保存到全局变量
+            const jsonStr = JSON.stringify(requestBodyObject, null, 2);
+            window.LAST_API_LOG = {
+                content: jsonStr,
+                tokens: this.estimateTokens(jsonStr)
+            };
+
+        } catch (error) {
+            // 如果 try 代码块里任何一行出错了，程序会跳到这里，而不会崩溃！
+            
+            // ★ 在F12里打印一个更明确的错误信息，帮助我们调试
+            console.error("【API日志记录失败】", error);
+            
+            // ★ 同时，把当时出问题的原始数据也打印出来，看看它到底长啥样
+            console.log("【出问题的原始 options.body】:", options.body);
+
+            // （可选）即使出错了，也可以给一个默认值，防止其他地方用到 window.LAST_API_LOG 时出错
+            window.LAST_API_LOG = {
+                content: '记录API日志时发生错误，请查看控制台详情。',
+                tokens: 0
+            };
+        }
 
         // ==========================================
 
@@ -1511,15 +1534,24 @@ const UI = {
         this.els.chatMsgs.parentElement.scrollTop = this.els.chatMsgs.parentElement.scrollHeight;
     },
 
-    setLoading(isLoading) {
-        STATE.isTyping = isLoading;
-        this.els.sendBtn.disabled = isLoading;
-        if (isLoading) {
-            this.els.status.innerText = '对方正在输入';
-            this.els.status.classList.add('typing');
-        } else {
-            this.els.status.innerText = '在线';
-            this.els.status.classList.remove('typing');
+    // UI渲染：对方正在输入
+    setLoading(isLoading, contactId) { // ★★★ 参数 contactId 依然是必需的
+        // 1. 更新全局状态，让程序知道“谁”在输入
+        STATE.typingContactId = isLoading ? contactId : null;
+        
+        // 2. 关键检查：只有当这个状态更新是针对“当前打开的”聊天窗口时，才刷新UI
+        if (contactId === STATE.currentContactId) {
+            this.els.sendBtn.disabled = isLoading;
+
+            if (isLoading) {
+                // ★★★ 恢复您原来的文本
+                this.els.status.innerText = '对方正在输入'; 
+                this.els.status.classList.add('typing');
+            } else {
+                // ★★★ 恢复您原来的文本
+                this.els.status.innerText = '在线';
+                this.els.status.classList.remove('typing');
+            }
         }
     },
 
@@ -1590,164 +1622,142 @@ const App = {
         console.log("App initialized, contacts loaded:", STATE.contacts.length);
     },
 
+    // APP CONTROLLER.enterChat
     enterChat(id) {
         const contact = STATE.contacts.find(c => c.id === id);
         if (!contact) return;
         
         STATE.currentContactId = id;
-        
-        // ★★★ 新增：每次进入聊天，重置显示数量为默认值
         STATE.visibleMsgCount = CONFIG.CHAT_PAGE_SIZE;
 
         UI.switchView('chat');
 
-        // ★ 进入聊天，消除红点
+        // ★★★ 新增：进入聊天时，根据全局状态，正确设置顶部的“正在输入”或“在线”状态
+        // 检查当前是不是应该显示“正在输入”
+        const isLoading = STATE.typingContactId === id;
+        // 更新UI（即使isLoading是false，也需要调用一次来把状态文字设置为当前联系人名）
+        UI.setLoading(isLoading, id);
+
+
         if (contact.hasNewMsg) {
             contact.hasNewMsg = false; 
             Storage.saveContacts(); 
         }
 
-        // 渲染聊天记录（会根据 STATE.visibleMsgCount 截取）
         UI.renderChatHistory(contact);
-        
-        // ★ 刷新列表，让界面上的红点立刻消失
         UI.renderContacts(); 
     },
 
+    // APP CONTROLLER.handleSend
     async handleSend(isReroll = false) {
         const contact = STATE.contacts.find(c => c.id === STATE.currentContactId);
         if (!contact) return;
         
+        // ... (前面获取 userText, API配置等代码保持不变) ...
         const { API_URL, API_KEY, MODEL } = STATE.settings;
         if (!API_URL || !API_KEY || !MODEL) {
             alert('请先点击右上角的设置按钮，配置 API 地址、密钥和模型！');
             return;
         }
-
         let userText = UI.els.input.value.trim();
         const timestamp = formatTimestamp();
-
-        // 历史记录处理
         const sysMsg = { role: 'system', content: contact.prompt };
         if (contact.history.length === 0 || contact.history[0].role !== 'system') {
             contact.history.unshift(sysMsg);
         } else {
             contact.history[0] = sysMsg; 
         }
-
         if (isReroll) {
+            // ... (isReroll 内部逻辑保持不变) ...
             const lastUserMsg = [...contact.history].reverse().find(m => m.role === 'user');
             if (!lastUserMsg) return;
             userText = lastUserMsg.content;
-            
             while(contact.history.length > 0 && contact.history[contact.history.length-1].role === 'assistant') {
                 contact.history.pop();
             }
-            UI.removeLatestAiBubbles(); 
+            UI.removeLatestAiBubbles();
         } else {
-            // ================== 【修复开始】 ==================
             if (!userText) return;
-
-            // 1. 先把消息存入 history
             const newUserMsg = { role: 'user', content: `[${timestamp}] ${userText}`, timestamp: timestamp };
             contact.history.push(newUserMsg);
-            
-            // 2. 获取这条消息确切的 index (当前长度 - 1)
             const currentMsgIndex = contact.history.length - 1;
-
-            // 3. 处理 UI 渲染，必须传入 currentMsgIndex
             const paragraphs = userText.split(/\n\s*\n/).filter(p => p.trim());
             if (paragraphs.length > 0) {
-                // 这里的 index 传进去，UI 就知道这是第几条消息了
                 paragraphs.forEach(p => UI.appendMessageBubble(p.trim(), 'user', null, timestamp, currentMsgIndex));
             } else {
                 UI.appendMessageBubble(userText, 'user', null, timestamp, currentMsgIndex);
             }
-
-            // 4. 清理输入框
             UI.els.input.value = '';            
             UI.els.input.style.height = '38px'; 
-            
             if (window.innerWidth < 800) UI.els.input.blur();
             else UI.els.input.focus(); 
-            // ================== 【修复结束】 ==================
         }        
 
         await Storage.saveContacts();
-        UI.setLoading(true);
+        
+        // ★★★ 修改点 1：调用 setLoading 时传入 contact.id
+        UI.setLoading(true, contact.id);
 
-        const recentHistory = contact.history
-            .filter(m => m.role !== 'system')
-            .slice(-30)
-            .map(msg => {
-                let content = msg.content || msg;
-                if (msg.role === 'user') {
-                    if(content.startsWith('[Dec')) {
-                        // 兼容旧格式，不做处理
-                    }
-                    return { role: 'user', content: content };
-                } else {
-                    return { role: 'assistant', content: content };
-                }
-            });
-        
+        // ... (中间构造 messagesToSend 的代码保持不变) ...
+        const recentHistory = contact.history.filter(m => m.role !== 'system').slice(-30).map(msg => {
+            let content = msg.content || msg;
+            if (msg.role === 'user') {
+                if(content.startsWith('[Dec')) {}
+                return { role: 'user', content: content };
+            } else {
+                return { role: 'assistant', content: content };
+            }
+        });
         const worldInfoPrompt = WorldInfoEngine.scan(userText, recentHistory, contact.id, contact.name);
-        
         const messagesToSend = [
             { role: 'system', content: CONFIG.SYSTEM_PROMPT }, 
             { role: 'system', content: `=== 角色设定 ===\n${contact.prompt}` }
         ];
-
         if (worldInfoPrompt) {
-            messagesToSend.push({ 
-                role: 'system', 
-                content: `=== 世界知识/环境信息 ===\n${worldInfoPrompt}` 
-            });
+            messagesToSend.push({ role: 'system', content: `=== 世界知识/环境信息 ===\n${worldInfoPrompt}` });
             console.log("【World Info Injected】", worldInfoPrompt);
         }
-
         recentHistory.forEach(h => messagesToSend.push(h));
+
 
         try {
             const aiText = await API.chat(messagesToSend, STATE.settings);
             const aiTimestamp = formatTimestamp();
             
-            // AI 消息部分同理，先存后显，但由于 playWaterfall 内部实现未展示，
-            // 只要 playWaterfall 是在 push 之后调用的，且如果不传 index 它取最后一条，逻辑就是对的。
             contact.history.push({ role: 'assistant', content: aiText, timestamp: aiTimestamp });
             
-            // ================== 【修改开始】 ==================
-            
-            // ★ A. 红点逻辑：
-            // 如果当前显示的并不是这个角色的聊天窗口（说明用户趁AI思考时切走去聊别的了）
-            // 或者是为了保险起见，只要 ID 不对就标红
+            // ★★★ 核心修改点 ★★★
+            // 在收到回复并准备更新UI之前，检查用户是否已经切换到别的聊天窗口
             if (STATE.currentContactId !== contact.id) {
+                // 如果切走了，只标记未读消息（红点），然后立刻停止后续所有UI操作
                 contact.hasNewMsg = true;
+                await Storage.saveContacts();
+                UI.renderContacts(); // 刷新列表以显示红点
+                return; // ★★★ 提前退出函数！
             }
 
-            // 2. 保存数据
+            // 如果用户还在此页面，才执行下面的UI更新
             await Storage.saveContacts();
-            
-            // ★ B. 刷新侧边栏：
-            // 这一步很重要！不仅是为了显示红点，还是为了更新列表里的“最后一条消息预览”
-            UI.renderContacts(); 
+            UI.renderContacts(); // 同样刷新列表，为了更新“最后一条消息”预览
 
-            // ================== 【修改结束】 ==================
-            UI.setLoading(false);
+            // ★★★ 修改点 2：调用 setLoading 时传入 contact.id
+            UI.setLoading(false, contact.id);
             
-            // 确保 playWaterfall 能处理正确的 index (通常它处理最新的)
             await UI.playWaterfall(aiText, contact.avatar, aiTimestamp); 
             
         } catch (error) {
             console.error(error);
-            UI.setLoading(false);
-            
-            // 出错信息也建议绑定到当前最后一条（或者不绑定）
-            // 这里为了安全，暂时让它浮空或者绑定到最后
-            const errorIndex = contact.history.length > 0 ? contact.history.length - 1 : 0;
-            UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar, null, errorIndex);
+            // ★★★ 修改点 3：调用 setLoading 时传入 contact.id
+            // 即使出错了，也要检查一下是否应该关闭“正在输入”状态
+            if (STATE.currentContactId === contact.id) {
+                UI.setLoading(false, contact.id);
+                const errorIndex = contact.history.length > 0 ? contact.history.length - 1 : 0;
+                UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar, null, errorIndex);
+            }
         } finally {
+            if (STATE.currentContactId === contact.id) {
             UI.updateRerollState(contact);
+            }
             if (window.innerWidth >= 800) UI.els.input.focus();
         }
     },
