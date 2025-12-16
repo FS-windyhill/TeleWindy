@@ -14,6 +14,12 @@
     --btn-border-color: #a9a9a9;
 }
 
+/* 1. 确保 html 也有背景色，作为兜底，防止露白 */
+html {
+    height: 100%;
+    background-color: #f2f2f2; /* 与 body 保持一致 */
+}
+
 /* 你原来的 body 样式全部删掉或注释就行 */
 html, body {
     height: 100dvh;                     /* 2025年最正确的全屏写法 */
@@ -21,13 +27,30 @@ html, body {
     padding: 0;
     overflow: hidden;
     overscroll-behavior: none;
+    /* 【新增 1】给 html 也加上兜底背景色 */
+    /* 这是为了防止万一 body 渲染有 1px 的误差或者回弹时，露出来的不是刺眼的白色，而是你的主题色 */
+    background-color: #f2f2f2; 
 }
 
 body {
+    /* 2. 使用 min-height 确保至少填满屏幕 */
+    min-height: 100dvh;
+    /* 强行设为 100% 也可以配合 overflow:hidden 使用 */
+    height: 100dvh; 
+    
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    
     display: flex;
     flex-direction: column;
-    background: url('wallpaper.jpg') center/cover no-repeat fixed;
-    /* 如果没有wallpaper.jpg，用这个备用色，防止一片白 */
+
+    /* 3. 核心修改：去掉 'fixed' */
+    /* 原理：因为 body 是 100dvh 且不滚动，它本身就占满了全屏 */
+    /* background-size: cover 会自动让图片撑满这个 100dvh 的 body */
+    background: url('wallpaper.jpg') center/cover no-repeat;
+    
     background-color: #f2f2f2; 
 }
 
