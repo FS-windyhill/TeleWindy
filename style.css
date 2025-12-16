@@ -2730,11 +2730,7 @@ body.dark-mode .app-status-bar {
     transition: width 0.5s, background-color 0.5s;
 }
 
-/* 暗色模式电池修正 */
-@media (prefers-color-scheme: dark) {
-    .sb-battery-icon::after { background-color: rgba(255,255,255,0.5); }
-    .sb-battery-level { background-color: #fff; }
-}
+
 
 
 
