@@ -1,115 +1,133 @@
 /**
- * ================================================
- * TeleWindy 代码结构树状目录（2025-12-15）
- * ================================================
+ * ==================================================
+ * TeleWindy 项目代码目录树（2025-12-16 版本）
+ * ==================================================
  *
  * 1. CONFIG & STATE (配置与状态)
- *    ├─ CONFIG 对象
- *    │   └─ SYSTEM_PROMPT
- *    └─ STATE 对象
+ *    ├── CONFIG                  // 全局常量配置对象
+ *    │   ├── STORAGE_KEY         // 联系人数据存储键
+ *    │   ├── SETTINGS_KEY        // 设置存储键
+ *    │   ├── WORLD_INFO_KEY      // 世界书存储键（v2）
+ *    │   ├── CHAT_PAGE_SIZE      // 聊天每次加载消息条数
+ *    │   ├── GIST_ID_KEY         // Gist ID 存储键
+ *    │   ├── DEFAULT             // 默认配置（API、壁纸、主题等）
+ *    │   └── SYSTEM_PROMPT       // 系统级固定提示词
+ *    └── STATE                   // 运行时全局状态
+ *        ├── contacts            // 联系人数组
+ *        ├── worldInfoBooks      // 世界书数组（多本书支持）
+ *        ├── currentContactId    // 当前聊天联系人ID
+ *        ├── currentBookId       // 当前编辑的世界书ID
+ *        ├── settings            // 当前设置（合并默认+保存）
+ *        ├── typingContactId     // 正在“输入中”的联系人ID
+ *        └── visibleMsgCount     // 当前聊天窗口已加载的消息数
  *
  * 1.5. DB UTILS (IndexedDB 简易封装)
- *    ├─ open()
- *    ├─ get(key)
- *    ├─ set(key, value)
- *    ├─ remove(key)
- *    ├─ clear()
- *    └─ exportAll()
+ *    └── DB
+ *        ├── open()              // 打开/创建数据库
+ *        ├── get(key)            // 读取单条数据
+ *        ├── set(key, value)     // 写入单条数据
+ *        ├── remove(key)         // 删除单条数据
+ *        ├── clear()             // 清空整个数据库
+ *        └── exportAll()         // 导出所有数据（使用游标，修复大数据问题）
  *
  * 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
- *    ├─ load()
- *    ├─ saveContacts()
- *    ├─ saveSettings()
- *    ├─ saveWorldInfo()
- *    ├─ exportAllForBackup()
- *    └─ importFromBackup(data)
+ *    └── Storage
+ *        ├── load()                  // 初始化加载：设置、联系人、世界书（含旧数据迁移）
+ *        ├── saveContacts()          // 保存联系人数组
+ *        ├── saveSettings()          // 保存设置
+ *        ├── saveWorldInfo()         // 保存世界书数组
+ *        ├── exportAllForBackup()    // 导出备份（Token加密处理）
+ *        └── importFromBackup(data)  // 导入备份（清空后写入，Token解密）
  *
- * 3. WORLD INFO ENGINE (世界书引擎)
- *    ├─ importFromST(jsonString, fileName)
- *    ├─ exportToST(book)
- *    └─ scan(userText, history, currentContactId, currentContactName)
+ * 3. WORLD INFO ENGINE (世界书引擎，已修正)
+ *    └── WorldInfoEngine
+ *        ├── importFromST(jsonString, fileName)  // 从SillyTavern格式导入（兼容多种怪异格式）
+ *        ├── exportToST(book)                    // 导出为SillyTavern标准格式（带comment）
+ *        └── scan(userText, history, contactId, contactName) // 扫描触发世界书条目并注入提示
  *
  * 4. API SERVICE (LLM通信)
- *    ├─ getProvider(url)
- *    ├─ fetchModels(url, key)
- *    ├─ estimateTokens(text)
- *    └─ chat(messages, settings)
+ *    └── API
+ *        ├── getProvider(url)        // 判断API提供商（openai/claude/gemini）
+ *        ├── fetchModels(url, key)   // 获取模型列表
+ *        ├── estimateTokens(text)    // 粗略估算Token数（中英文分开计算）
+ *        └── chat(messages, settings)// 核心调用：统一处理不同提供商的请求体，并记录API日志到window.LAST_API_LOG
  *
- * 5. CLOUD SYNC (云同步 - Gist & 自定义服务器)
- *    ├─ init()
- *    ├─ toggleMode()
- *    ├─ showStatus(msg, isError)
- *    ├─ getAuth()
- *    ├─ _maskToken(token)
- *    ├─ _unmaskToken(maskedToken)
- *    ├─ _preparePayload()
- *    ├─ updateBackup()
- *    ├─ findBackup()
- *    ├─ restoreBackup()
- *    ├─ _safeRestore(data)
- *    ├─ _uploadToCustom()
- *    ├─ _fetchFromCustom(password)
- *    ├─ _uploadToGist()
- *    └─ _fetchFromGist(token)
+ * 5. CLOUD SYNC (云同步 - Gist + 自定义服务器混合版)
+ *    └── CloudSync
+ *        ├── init()                          // 初始化UI状态恢复
+ *        ├── toggleMode()                    // 切换同步模式（Gist/自定义）
+ *        ├── showStatus(msg, isError)        // 显示同步状态提示
+ *        ├── getAuth()                       // 安全获取Token/密码
+ *        ├── findBackup()                    // 【Gist专用】自动查找TeleWindy备份
+ *        ├── updateBackup()                  // 主入口：根据模式上传
+ *        ├── restoreBackup()                 // 主入口：根据模式下载恢复（含防手抖确认）
+ *        ├── _preparePayload()               // 准备上传数据（Token混淆防泄露）
+ *        ├── _safeRestore(data)              // 安全恢复（保留同步设置，防止空间不足）
+ *        ├── _uploadToCustom()               // 自定义服务器上传
+ *        ├── _fetchFromCustom(password)      // 自定义服务器下载
+ *        ├── _uploadToGist()                 // Gist上传（创建/更新）
+ *        └── _fetchFromGist(token)           // Gist下载（处理truncated大文件）
  *
  * 6. UI RENDERER (DOM 操作与渲染)
- *    ├─ init()
- *    ├─ applyAppearance()
- *    ├─ toggleTheme(newTheme)
- *    ├─ switchView(viewName)
- *    ├─ renderContacts()
- *    ├─ renderBookSelect()
- *    ├─ updateCurrentBookSettingsUI()
- *    ├─ renderWorldInfoList()
- *    ├─ initWorldInfoTab()
- *    ├─ createSingleBubble(...)
- *    ├─ showEditModal(oldText, onConfirmCallback)
- *    ├─ removeLatestAiBubbles()
- *    ├─ renderChatHistory(contact)
- *    ├─ appendMessageBubble(...)
- *    ├─ scrollToBottom()
- *    ├─ setLoading(isLoading)
- *    ├─ updateRerollState(contact)
- *    ├─ playWaterfall(fullText, avatar, timestamp)
- *    └─ renderPresetMenu()
+ *    └── UI
+ *        ├── init()                              // 初始化主题、联系人列表、云同步
+ *        ├── applyAppearance()                   // 应用壁纸与主题
+ *        ├── toggleTheme(newTheme)               // 切换日夜模式并保存
+ *        ├── switchView(viewName)                // 切换列表/聊天视图
+ *        ├── renderContacts()                    // 渲染联系人侧边栏（含红点、预览）
+ *        ├── renderBookSelect()                  // 渲染世界书下拉框
+ *        ├── updateCurrentBookSettingsUI()       // 更新当前书绑定角色显示
+ *        ├── renderWorldInfoList()               // 渲染世界书条目列表（带高亮）
+ *        ├── initWorldInfoTab()                  // 初始化世界书Tab（角色下拉+列表）
+ *        ├── createSingleBubble(...)             // 创建单个消息气泡（支持动画控制）
+ *        ├── renderChatHistory(contact, isLoadMore) // 分页渲染聊天记录（加载更多逻辑）
+ *        ├── appendMessageBubble(...)            // 追加单条气泡（用于流式输出）
+ *        ├── scrollToBottom()                    // 滚动到底部
+ *        ├── setLoading(isLoading, contactId)    // 显示/隐藏“对方正在输入”
+ *        ├── updateRerollState(contact)          // 更新“重新生成”按钮可用性
+ *        ├── playWaterfall(fullText, avatar, timestamp) // 瀑布流式显示AI多段回复
+ *        ├── showEditModal(oldText, callback)     // 显示消息编辑弹窗
+ *        ├── removeLatestAiBubbles()             // 删除最新AI消息组（用于reroll）
+ *        └── renderPresetMenu()                  // 渲染API预设下拉菜单
  *
- * 7. APP CONTROLLER (业务逻辑主控)
- *    ├─ init()
- *    ├─ enterChat(id)
- *    ├─ handleSend(isReroll)
- *    ├─ openSettings()
- *    ├─ switchWorldInfoBook(bookId)
- *    ├─ bindCurrentBookToChar(charId)
- *    ├─ loadWorldInfoEntry(uid)
- *    ├─ saveWorldInfoEntry()
- *    ├─ deleteWorldInfoEntry()
- *    ├─ clearWorldInfoEditor()
- *    ├─ createNewBook()
- *    ├─ renameCurrentBook()
- *    ├─ deleteCurrentBook()
- *    ├─ exportCurrentBook()
- *    ├─ handleImportWorldInfo(file)
- *    ├─ handleSavePreset()
- *    ├─ handleLoadPreset(index)
- *    ├─ handleDeletePreset()
- *    ├─ saveSettingsFromUI()
- *    ├─ handleMessageAction(action)
- *    ├─ hideMessageContextMenu()
- *    ├─ showMessageContextMenu(msgIndex, rect)
- *    ├─ bindEvents()
- *    ├─ readFile(file)
- *    ├─ fetchModelsForUI()
- *    ├─ bindImageUpload(...)
- *    ├─ openEditModal(id)
- *    └─ saveContactFromModal()
+ * 7. APP CONTROLLER (核心业务逻辑)
+ *    └── App
+ *        ├── init()                              // 应用启动入口（加载数据→初始化UI→绑定事件）
+ *        ├── enterChat(id)                       // 进入指定联系人聊天
+ *        ├── handleSend(isReroll)                // 发送消息主逻辑（含reroll、世界书注入、切换窗口保护）
+ *        ├── openSettings()                      // 打开主设置弹窗并填充数据
+ *        ├── switchWorldInfoBook(bookId)         // 切换当前编辑的世界书
+ *        ├── bindCurrentBookToChar(charId)       // 绑定当前书到指定角色（或全局）
+ *        ├── loadWorldInfoEntry(uid)             // 加载条目到编辑区
+ *        ├── saveWorldInfoEntry()                // 保存条目（新建/更新，含comment优先逻辑）
+ *        ├── deleteWorldInfoEntry()              // 删除当前条目
+ *        ├── clearWorldInfoEditor()              // 清空编辑区
+ *        ├── createNewBook()                     // 新建世界书
+ *        ├── renameCurrentBook()                 // 重命名当前书
+ *        ├── deleteCurrentBook()                 // 删除当前书（保留至少一本）
+ *        ├── exportCurrentBook()                 // 导出当前书为ST格式
+ *        ├── handleImportWorldInfo(file)         // 导入ST格式世界书
+ *        ├── handleSavePreset()                  // 保存API预设
+ *        ├── handleLoadPreset(index)             // 加载API预设
+ *        ├── handleDeletePreset()                // 删除API预设
+ *        ├── saveSettingsFromUI()                // 从设置界面保存配置
+ *        ├── handleMessageAction(action)         // 处理消息右键菜单（编辑/删除/复制）
+ *        ├── showMessageContextMenu(...)         // 显示消息上下文菜单（含防误触锁）
+ *        ├── hideMessageContextMenu()            // 隐藏消息上下文菜单
+ *        ├── openEditModal(id)                   // 打开角色编辑弹窗（新建/编辑）
+ *        ├── saveContactFromModal()              // 保存角色信息
+ *        ├── fetchModelsForUI()                  // 从API拉取模型列表填充datalist
+ *        ├── readFile(file)                      // 读取文件为base64
+ *        └── bindEvents()                        // 绑定所有交互事件（发送、长按、设置、云同步等）
  *
  * 8. UTILS & EXPORTS (工具函数与全局导出)
- *    ├─ formatTimestamp()
- *    ├─ window.exportData()
- *    └─ window.importData(input)
+ *    ├── formatTimestamp()                   // 格式化时间戳 [Dec.16 14:30]
+ *    ├── window.exportData                   // 全局导出备份函数
+ *    └── window.importData                   // 全局导入备份函数（含空间检查与错误处理）
  *
- * 启动入口：window.onload = () => App.init();
- * ================================================
+ * ==================================================
+ * 项目启动：window.onload = () => App.init();
+ * ==================================================
  */
 
 
@@ -1726,39 +1744,45 @@ const App = {
             
             contact.history.push({ role: 'assistant', content: aiText, timestamp: aiTimestamp });
             
-            // ★★★ 核心修改点 ★★★
-            // 在收到回复并准备更新UI之前，检查用户是否已经切换到别的聊天窗口
+             // ★★★ 核心修复点 1：处理切屏导致的 Loading 状态残留 ★★★
+            // 检查用户是否已经切换到别的聊天窗口
             if (STATE.currentContactId !== contact.id) {
-                // 如果切走了，只标记未读消息（红点），然后立刻停止后续所有UI操作
+                // 如果切走了，必须手动清除全局的 typing 状态！
+                // 否则下次回来时，UI会误以为还在输入
+                STATE.typingContactId = null; 
+
                 contact.hasNewMsg = true;
                 await Storage.saveContacts();
-                UI.renderContacts(); // 刷新列表以显示红点
-                return; // ★★★ 提前退出函数！
+                UI.renderContacts(); 
+                return; // 退出函数
             }
 
-            // 如果用户还在此页面，才执行下面的UI更新
             await Storage.saveContacts();
-            UI.renderContacts(); // 同样刷新列表，为了更新“最后一条消息”预览
+            UI.renderContacts(); 
 
-            // ★★★ 修改点 2：调用 setLoading 时传入 contact.id
-            UI.setLoading(false, contact.id);
-            
+            // ★★★ 优化点：先播动画，保持“正在输入”状态 ★★★
+            // 建议：让状态保持为“正在输入”，直到文字全部打完，体验更像真人
             await UI.playWaterfall(aiText, contact.avatar, aiTimestamp); 
+            
+            // 动画播完后，再关闭 Loading
+            UI.setLoading(false, contact.id);
             
         } catch (error) {
             console.error(error);
-            // ★★★ 修改点 3：调用 setLoading 时传入 contact.id
-            // 即使出错了，也要检查一下是否应该关闭“正在输入”状态
+            // 错误处理：关闭 Loading
             if (STATE.currentContactId === contact.id) {
                 UI.setLoading(false, contact.id);
                 const errorIndex = contact.history.length > 0 ? contact.history.length - 1 : 0;
                 UI.appendMessageBubble(`(发送失败: ${error.message})`, 'ai', contact.avatar, null, errorIndex);
+            } else {
+                // 如果在后台报错，也要清理状态
+                STATE.typingContactId = null;
             }
         } finally {
             if (STATE.currentContactId === contact.id) {
-            UI.updateRerollState(contact);
+                UI.updateRerollState(contact);
             }
-            if (window.innerWidth >= 800) UI.els.input.focus();
+            if (window.innerWidth >= 800 && UI.els.input) UI.els.input.focus();
         }
     },
 
@@ -2083,7 +2107,7 @@ const App = {
 
     /*1212*/
     // 【7. APP CONTROLLER】
-    handleMessageAction(action) {
+handleMessageAction(action) {
         // 1. 获取选中索引
         const msgIndex = STATE.selectedMessageIndex;
 
@@ -2104,12 +2128,11 @@ const App = {
             return;
         }
 
+        // 定义时间戳正则（Edit和Copy公用）
+        const timestampRegex = /^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/;
+
         // 3. 执行动作
         if (action === 'edit') {
-            // ★ 修改点：智能分离时间戳
-            // 定义时间戳正则，跟你在 renderChatHistory 里用的一样
-            const timestampRegex = /^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/;
-            
             let originalContent = msgData.content;
             let timestampPart = ''; // 用于暂存时间戳头
             let cleanContent = originalContent;
@@ -2140,11 +2163,17 @@ const App = {
             }
         }
         else if (action === 'copy') {
-            // 复制时是否要带时间戳？如果不带，也可以在这里做正则处理
-            // 这里暂且保持复制原始内容
-            navigator.clipboard.writeText(msgData.content)
+            // ★★★ 修复点：复制前先清洗时间戳 ★★★
+            let contentToCopy = msgData.content;
+            
+            // 使用同样的正则去除时间戳
+            if (timestampRegex.test(contentToCopy)) {
+                contentToCopy = contentToCopy.replace(timestampRegex, '');
+            }
+
+            navigator.clipboard.writeText(contentToCopy)
                 .then(() => {
-                    alert("复制成功！"); 
+                    alert("已复制内容"); 
                 })
                 .catch(err => {
                     console.error("复制失败:", err);
