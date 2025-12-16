@@ -2638,7 +2638,7 @@ body.dark-mode .load-more-btn {
     padding: 5px 25px 5px 25px; /* 底部留点空隙 */
     font-size: 13px;
     font-weight: 500;
-    color: #333; /* 字体颜色 */
+    color: #33333379; /* 字体颜色 */
     user-select: none;
     flex-wrap: wrap;
     align-content: center;
@@ -2649,7 +2649,7 @@ body.dark-mode .app-status-bar {
     background-color: rgba(57, 57, 57, 0.8); /* 或者跟你的 Header 颜色一致 */
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
-    color: #ffffff; /* 字体颜色 */
+    color: #ffffff8b; /* 字体颜色 */
     user-select: none;
     pointer-events: none; /* 让点击穿透，不阻挡操作 */
 }
