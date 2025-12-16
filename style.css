@@ -1,4 +1,4 @@
-:root {
+    :root {
     --primary-color: #505050;
     --background-color: #ffffff;
     --text-color: #333;
@@ -48,7 +48,7 @@ body {
 /* 1. 修改 Header 容器，让它成为按钮定位的“锚点” */
 .app-header {
     position: relative;
-    padding: 12px 24px;
+    padding: 10px 24px;
     border-bottom: 1px solid rgba(220,220,220,0.9);
     text-align: center;
     flex-shrink: 0;
@@ -492,7 +492,7 @@ body {
 #contact-list-wrapper {
     width: 90vw;
     max-width: 520px;          /* 手机/平板不会太宽 */
-    height: 88vh;
+    height: 82vh;
     max-height: 820px;
     margin: auto;              /* 上下左右自动居中 */
     background: rgba(255, 255, 255, 0.72);     /* 亮色壁纸推荐 0.72 */
@@ -2635,7 +2635,7 @@ body.dark-mode .load-more-btn {
     display: flex;
     justify-content: space-between;
     height: env(safe-area-inset-top);  /* 关键：自动等于系统状态栏高度 */
-    padding: 5px 15px 5px 15px; /* 底部留点空隙 */
+    padding: 5px 25px 5px 25px; /* 底部留点空隙 */
     font-size: 13px;
     font-weight: 500;
     color: #333; /* 字体颜色 */
@@ -2649,12 +2649,6 @@ body.dark-mode .app-status-bar {
     background-color: rgba(57, 57, 57, 0.8); /* 或者跟你的 Header 颜色一致 */
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
-    z-index: 9999; /* 保证在最顶层 */
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 15px 5px 15px; /* 底部留点空隙 */
-    font-size: 13px;
-    font-weight: 500;
     color: #ffffff; /* 字体颜色 */
     user-select: none;
     pointer-events: none; /* 让点击穿透，不阻挡操作 */
@@ -2692,13 +2686,14 @@ body.dark-mode .app-status-bar {
     border-radius: 0 1px 1px 0;
 }
 
+
 .sb-battery-level {
     height: 100%;
+    background-color: #50d317;
     border-radius: 1px;
     width: 100%; /* 默认满电 */
     transition: width 0.5s, background-color 0.5s;
 }
-
 
 
 
