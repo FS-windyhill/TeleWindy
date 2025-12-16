@@ -2724,13 +2724,45 @@ body.dark-mode .app-status-bar {
 
 .sb-battery-level {
     height: 100%;
-    background-color: #333;
+    background-color: #50d317;
     border-radius: 1px;
     width: 100%; /* 默认满电 */
     transition: width 0.5s, background-color 0.5s;
 }
 
 
+
+
+/* ★★★ PWA 模式专用优化 ★★★ */
+/* 当应用全屏运行（standalone）时，隐藏文字，只留毛玻璃条 */
+@media all and (display-mode: standalone) {
+    /* 隐藏左边的时间 */
+    .sb-left {
+        display: none; 
+    }
+    
+    /* 隐藏右边的电量 */
+    .sb-right {
+        display: none;
+    }
+    
+    /* 调整一下状态栏高度，让它只作为背景存在 */
+    /* iOS系统状态栏文字通常在最顶部，我们需要保证毛玻璃盖住那里 */
+    .app-status-bar {
+        /* 这里的背景色可以稍微透明一点，让系统白字更清晰 */
+        background: rgba(255, 255, 255, 0.6) !important; 
+        
+        /* 稍微调高一点高度，确保刘海完全被覆盖 */
+        height: max(var(--safe-top), 20px) !important; 
+    }
+    
+    /* 此时，你的Header就紧贴着这个毛玻璃条 */
+    /* 因为文字隐藏了，高度变小了，我们需要修正 body 的 padding */
+    body {
+        /* 只留出刘海的高度即可，不需要留出你原来定义的24px内容高度 */
+        padding-top: env(safe-area-inset-top, 20px) !important;
+    }
+}
 
 
 
