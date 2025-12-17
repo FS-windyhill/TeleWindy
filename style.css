@@ -495,7 +495,7 @@ body {
 #contact-list-wrapper {
     width: 90vw;
     max-width: 520px;          /* 手机/平板不会太宽 */
-    height: 82vh;
+    height: 88vh;
     max-height: 820px;
     margin: auto;              /* 上下左右自动居中 */
     background: rgba(255, 255, 255, 0.72);     /* 亮色壁纸推荐 0.72 */
@@ -2642,7 +2642,9 @@ body.dark-mode .load-more-btn {
     backdrop-filter: none;
     z-index: 9999; /* 保证在最顶层 */
     justify-content: space-between;
-    height: env(safe-area-inset-top);  /* 关键：自动等于系统状态栏高度 */
+
+    /* 高度随 safe-area 变化，当为 0 时自然塌缩 */
+    height: env(safe-area-inset-top, 0px);
 
     padding: 5px 25px 5px 25px; /* 底部留点空隙 */
     font-size: 13px;
@@ -2652,6 +2654,10 @@ body.dark-mode .load-more-btn {
     flex-wrap: wrap;
     align-content: center;
     pointer-events: none; /* 让点击穿透，不阻挡操作 */
+
+    /* 关键：当高度为 0 时彻底隐藏内容，避免残留占位或可见元素 */
+    overflow: hidden;                    /* 防止内容溢出 */
+    opacity: calc(1 - (env(safe-area-inset-top, 0px) == 0px)); /* 可选，更彻底 */
 }
 
 body.dark-mode .app-status-bar {
