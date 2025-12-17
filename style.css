@@ -50,8 +50,8 @@ body {
     position: relative;
     padding-left: 24px;
     padding-right: 24px;
-    padding-top: calc(10px + env(safe-area-inset-top, 0px));
-    padding-bottom: 10px;
+    padding-top: calc(12px + env(safe-area-inset-top, 40px));
+    padding-bottom: 12px;
     border-bottom: 1px solid rgba(220,220,220,0.9);
     text-align: center;
     flex-shrink: 0;
@@ -390,7 +390,7 @@ body {
     position: absolute;
     top: 50%;
     /* 修正垂直居中，考虑padding */
-    transform: translateY(-50%); 
+    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
     background: none;
     border: none;
     font-size: 24px;
@@ -408,7 +408,7 @@ body {
     position: absolute;
     top: 50%;
     right: 16px;
-    transform: translateY(-50%);
+    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
     
     /* --- 1. 核心修复：强制盒子模型 --- */
     box-sizing: border-box; 
@@ -448,7 +448,7 @@ body {
     position: absolute;
     top: 50%;
     left: 16px;
-    transform: translateY(-50%);
+    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
     
     /* --- 1. 核心修复：强制盒子模型 --- */
     box-sizing: border-box; 
