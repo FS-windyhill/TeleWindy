@@ -390,7 +390,7 @@ body {
     position: absolute;
     top: 50%;
     /* 修正垂直居中，考虑padding */
-    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
+    transform: translateY(calc(-50% + 0.5 * env(safe-area-inset-top, 0px)));
     background: none;
     border: none;
     font-size: 24px;
@@ -408,7 +408,7 @@ body {
     position: absolute;
     top: 50%;
     right: 16px;
-    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
+    transform: translateY(calc(-50% + 0.5 * env(safe-area-inset-top, 0px)));
     
     /* --- 1. 核心修复：强制盒子模型 --- */
     box-sizing: border-box; 
@@ -448,7 +448,7 @@ body {
     position: absolute;
     top: 50%;
     left: 16px;
-    transform: translateY(calc(-50% + env(safe-area-inset-top, 0px)));
+    transform: translateY(calc(-50% + 0.5 * env(safe-area-inset-top, 0px)));
     
     /* --- 1. 核心修复：强制盒子模型 --- */
     box-sizing: border-box; 
@@ -2657,7 +2657,7 @@ body.dark-mode .load-more-btn {
 
     /* 关键：当高度为 0 时彻底隐藏内容，避免残留占位或可见元素 */
     overflow: hidden;                    /* 防止内容溢出 */
-    opacity: calc(1 - (env(safe-area-inset-top, 0px) == 0px)); /* 可选，更彻底 */
+
 }
 
 body.dark-mode .app-status-bar {
