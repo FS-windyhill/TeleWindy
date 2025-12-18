@@ -2250,7 +2250,7 @@ body.dark-mode #wi-list-container > div {
 }
 
 .message-bubble:active {
-    opacity: 0.8;  /* 长按效果 */
+    opacity: 0.9;  /* 长按效果 */
 }
 
 .selectable-message {
@@ -2732,6 +2732,26 @@ body.dark-mode .sb-battery-icon::after {
 }
 
 
+/* ==========markdown============== */
+/* 针对消息气泡内的 HTML 标签样式重置 */
+.message-bubble b, 
+.message-bubble strong {
+    font-weight: bold;
+    font-size: inherit; /* 强制继承气泡文字大小，防止 h1-h6 变大 */
+    line-height: inherit;
+    color: inherit;
+}
+
+.message-bubble i, 
+.message-bubble em {
+    font-style: italic;
+    color: inherit;
+}
+
+/* 确保换行符正常显示 */
+.message-bubble {
+    word-wrap: break-word; /* 防止长文本溢出 */
+}
 
 
 

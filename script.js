@@ -1,135 +1,123 @@
-/**
- * ==================================================
- * TeleWindy 项目代码目录树（2025-12-16 版本）
- * ==================================================
- *
- * 1. CONFIG & STATE (配置与状态)
- *    ├── CONFIG                  // 全局常量配置对象
- *    │   ├── STORAGE_KEY         // 联系人数据存储键
- *    │   ├── SETTINGS_KEY        // 设置存储键
- *    │   ├── WORLD_INFO_KEY      // 世界书存储键（v2）
- *    │   ├── CHAT_PAGE_SIZE      // 聊天每次加载消息条数
- *    │   ├── GIST_ID_KEY         // Gist ID 存储键
- *    │   ├── DEFAULT             // 默认配置（API、壁纸、主题等）
- *    │   └── SYSTEM_PROMPT       // 系统级固定提示词
- *    └── STATE                   // 运行时全局状态
- *        ├── contacts            // 联系人数组
- *        ├── worldInfoBooks      // 世界书数组（多本书支持）
- *        ├── currentContactId    // 当前聊天联系人ID
- *        ├── currentBookId       // 当前编辑的世界书ID
- *        ├── settings            // 当前设置（合并默认+保存）
- *        ├── typingContactId     // 正在“输入中”的联系人ID
- *        └── visibleMsgCount     // 当前聊天窗口已加载的消息数
- *
- * 1.5. DB UTILS (IndexedDB 简易封装)
- *    └── DB
- *        ├── open()              // 打开/创建数据库
- *        ├── get(key)            // 读取单条数据
- *        ├── set(key, value)     // 写入单条数据
- *        ├── remove(key)         // 删除单条数据
- *        ├── clear()             // 清空整个数据库
- *        └── exportAll()         // 导出所有数据（使用游标，修复大数据问题）
- *
- * 2. STORAGE SERVICE (本地持久化 - IndexedDB 版)
- *    └── Storage
- *        ├── load()                  // 初始化加载：设置、联系人、世界书（含旧数据迁移）
- *        ├── saveContacts()          // 保存联系人数组
- *        ├── saveSettings()          // 保存设置
- *        ├── saveWorldInfo()         // 保存世界书数组
- *        ├── exportAllForBackup()    // 导出备份（Token加密处理）
- *        └── importFromBackup(data)  // 导入备份（清空后写入，Token解密）
- *
- * 3. WORLD INFO ENGINE (世界书引擎，已修正)
- *    └── WorldInfoEngine
- *        ├── importFromST(jsonString, fileName)  // 从SillyTavern格式导入（兼容多种怪异格式）
- *        ├── exportToST(book)                    // 导出为SillyTavern标准格式（带comment）
- *        └── scan(userText, history, contactId, contactName) // 扫描触发世界书条目并注入提示
- *
- * 4. API SERVICE (LLM通信)
- *    └── API
- *        ├── getProvider(url)        // 判断API提供商（openai/claude/gemini）
- *        ├── fetchModels(url, key)   // 获取模型列表
- *        ├── estimateTokens(text)    // 粗略估算Token数（中英文分开计算）
- *        └── chat(messages, settings)// 核心调用：统一处理不同提供商的请求体，并记录API日志到window.LAST_API_LOG
- *
- * 5. CLOUD SYNC (云同步 - Gist + 自定义服务器混合版)
- *    └── CloudSync
- *        ├── init()                          // 初始化UI状态恢复
- *        ├── toggleMode()                    // 切换同步模式（Gist/自定义）
- *        ├── showStatus(msg, isError)        // 显示同步状态提示
- *        ├── getAuth()                       // 安全获取Token/密码
- *        ├── findBackup()                    // 【Gist专用】自动查找TeleWindy备份
- *        ├── updateBackup()                  // 主入口：根据模式上传
- *        ├── restoreBackup()                 // 主入口：根据模式下载恢复（含防手抖确认）
- *        ├── _preparePayload()               // 准备上传数据（Token混淆防泄露）
- *        ├── _safeRestore(data)              // 安全恢复（保留同步设置，防止空间不足）
- *        ├── _uploadToCustom()               // 自定义服务器上传
- *        ├── _fetchFromCustom(password)      // 自定义服务器下载
- *        ├── _uploadToGist()                 // Gist上传（创建/更新）
- *        └── _fetchFromGist(token)           // Gist下载（处理truncated大文件）
- *
- * 6. UI RENDERER (DOM 操作与渲染)
- *    └── UI
- *        ├── init()                              // 初始化主题、联系人列表、云同步
- *        ├── applyAppearance()                   // 应用壁纸与主题
- *        ├── toggleTheme(newTheme)               // 切换日夜模式并保存
- *        ├── switchView(viewName)                // 切换列表/聊天视图
- *        ├── renderContacts()                    // 渲染联系人侧边栏（含红点、预览）
- *        ├── renderBookSelect()                  // 渲染世界书下拉框
- *        ├── updateCurrentBookSettingsUI()       // 更新当前书绑定角色显示
- *        ├── renderWorldInfoList()               // 渲染世界书条目列表（带高亮）
- *        ├── initWorldInfoTab()                  // 初始化世界书Tab（角色下拉+列表）
- *        ├── createSingleBubble(...)             // 创建单个消息气泡（支持动画控制）
- *        ├── renderChatHistory(contact, isLoadMore) // 分页渲染聊天记录（加载更多逻辑）
- *        ├── appendMessageBubble(...)            // 追加单条气泡（用于流式输出）
- *        ├── scrollToBottom()                    // 滚动到底部
- *        ├── setLoading(isLoading, contactId)    // 显示/隐藏“对方正在输入”
- *        ├── updateRerollState(contact)          // 更新“重新生成”按钮可用性
- *        ├── playWaterfall(fullText, avatar, timestamp) // 瀑布流式显示AI多段回复
- *        ├── showEditModal(oldText, callback)     // 显示消息编辑弹窗
- *        ├── removeLatestAiBubbles()             // 删除最新AI消息组（用于reroll）
- *        └── renderPresetMenu()                  // 渲染API预设下拉菜单
- *
- * 7. APP CONTROLLER (核心业务逻辑)
- *    └── App
- *        ├── init()                              // 应用启动入口（加载数据→初始化UI→绑定事件）
- *        ├── enterChat(id)                       // 进入指定联系人聊天
- *        ├── handleSend(isReroll)                // 发送消息主逻辑（含reroll、世界书注入、切换窗口保护）
- *        ├── openSettings()                      // 打开主设置弹窗并填充数据
- *        ├── switchWorldInfoBook(bookId)         // 切换当前编辑的世界书
- *        ├── bindCurrentBookToChar(charId)       // 绑定当前书到指定角色（或全局）
- *        ├── loadWorldInfoEntry(uid)             // 加载条目到编辑区
- *        ├── saveWorldInfoEntry()                // 保存条目（新建/更新，含comment优先逻辑）
- *        ├── deleteWorldInfoEntry()              // 删除当前条目
- *        ├── clearWorldInfoEditor()              // 清空编辑区
- *        ├── createNewBook()                     // 新建世界书
- *        ├── renameCurrentBook()                 // 重命名当前书
- *        ├── deleteCurrentBook()                 // 删除当前书（保留至少一本）
- *        ├── exportCurrentBook()                 // 导出当前书为ST格式
- *        ├── handleImportWorldInfo(file)         // 导入ST格式世界书
- *        ├── handleSavePreset()                  // 保存API预设
- *        ├── handleLoadPreset(index)             // 加载API预设
- *        ├── handleDeletePreset()                // 删除API预设
- *        ├── saveSettingsFromUI()                // 从设置界面保存配置
- *        ├── handleMessageAction(action)         // 处理消息右键菜单（编辑/删除/复制）
- *        ├── showMessageContextMenu(...)         // 显示消息上下文菜单（含防误触锁）
- *        ├── hideMessageContextMenu()            // 隐藏消息上下文菜单
- *        ├── openEditModal(id)                   // 打开角色编辑弹窗（新建/编辑）
- *        ├── saveContactFromModal()              // 保存角色信息
- *        ├── fetchModelsForUI()                  // 从API拉取模型列表填充datalist
- *        ├── readFile(file)                      // 读取文件为base64
- *        └── bindEvents()                        // 绑定所有交互事件（发送、长按、设置、云同步等）
- *
- * 8. UTILS & EXPORTS (工具函数与全局导出)
- *    ├── formatTimestamp()                   // 格式化时间戳 [Dec.16 14:30]
- *    ├── window.exportData                   // 全局导出备份函数
- *    └── window.importData                   // 全局导入备份函数（含空间检查与错误处理）
- *
- * ==================================================
- * 项目启动：window.onload = () => App.init();
- * ==================================================
+/*
+ * TeleWindy 项目代码结构树状目录（中文版）
+ * 
+ * ├─ 1. CONFIG & STATE (配置与状态)
+ * │   ├─ CONFIG               // 全局常量配置对象
+ * │   │   ├─ STORAGE_KEY      // 联系人数据存储键
+ * │   │   ├─ SETTINGS_KEY     // 设置存储键
+ * │   │   ├─ WORLD_INFO_KEY   // 世界书存储键（v2）
+ * │   │   ├─ CHAT_PAGE_SIZE   // 每次加载的消息条数（分页）
+ * │   │   ├─ DEFAULT          // 默认配置（API地址、模型、头像、主题等）
+ * │   │   └─ SYSTEM_PROMPT    // 系统级固定提示词
+ * │   └─ STATE                // 运行时全局状态对象
+ * │       ├─ contacts         // 联系人（角色）数组
+ * │       ├─ worldInfoBooks   // 世界书（World Info）数组
+ * │       ├─ currentContactId // 当前聊天角色ID
+ * │       ├─ currentBookId    // 当前编辑的世界书ID
+ * │       ├─ settings         // 当前设置（合并默认值）
+ * │       ├─ typingContactId  // 正在“输入中”的联系人ID
+ * │       └─ visibleMsgCount  // 当前聊天窗口已加载的消息数
+ * 
+ * ├─ 1.5. DB UTILS (IndexedDB 简易封装)
+ * │   ├─ open()               // 打开/创建数据库
+ * │   ├─ get(key)             // 根据键读取数据
+ * │   ├─ set(key, value)      // 写入数据
+ * │   ├─ remove(key)          // 删除指定键
+ * │   ├─ clear()              // 清空整个数据库
+ * │   └─ exportAll()          // 导出所有数据（使用游标遍历）
+ * 
+ * ├─ 2. STORAGE SERVICE (本地持久化服务 - IndexedDB 版)
+ * │   ├─ load()               // 初始化加载所有数据（设置、联系人、世界书），含旧数据迁移逻辑
+ * │   ├─ saveContacts()       // 保存联系人数据
+ * │   ├─ saveSettings()       // 保存设置
+ * │   ├─ saveWorldInfo()      // 保存世界书数据
+ * │   ├─ exportAllForBackup() // 导出备份（含Gist Token加密）
+ * │   └─ importFromBackup(data) // 导入备份（清空后写入，含Token解密）
+ * 
+ * ├─ 3. WORLD INFO ENGINE (世界书引擎)
+ * │   ├─ importFromST(jsonString, fileName) // 从SillyTavern格式导入世界书（兼容多种格式）
+ * │   ├─ exportToST(book)     // 导出当前世界书为SillyTavern兼容JSON
+ * │   └─ scan(userText, history, currentContactId, currentContactName) // 扫描上下文触发世界书条目，返回注入的提示内容
+ * 
+ * ├─ 4. API SERVICE (大模型API通信服务)
+ * │   ├─ getProvider(url)     // 根据URL判断是OpenAI/Claude/Gemini哪种接口
+ * │   ├─ fetchModels(url, key) // 拉取可用模型列表
+ * │   ├─ estimateTokens(text) // 粗略估算文本Token数（中英文分别计算）
+ * │   └─ chat(messages, settings) // 核心发送请求函数，支持多种接口格式，并记录最后一次API日志到window.LAST_API_LOG
+ * 
+ * ├─ 5. CLOUD SYNC (云端备份同步 - Gist & 自定义服务器混合版)
+ * │   ├─ init()               // 初始化UI状态（恢复上次同步方式）
+ * │   ├─ toggleMode()         // 切换Gist/自定义服务器模式
+ * │   ├─ showStatus(msg, isError) // 显示同步状态提示
+ * │   ├─ getAuth()            // 安全获取密码/Token（优先输入框，再读设置）
+ * │   ├─ findBackup()         // 自动在用户所有Gist中查找TeleWindy备份
+ * │   ├─ updateBackup()       // 主入口：根据当前模式上传
+ * │   ├─ restoreBackup()      // 主入口：从云端恢复（含防误触确认）
+ * │   ├─ _preparePayload()    // 准备上传数据（含Token混淆加密）
+ * │   ├─ _uploadToCustom()    // 上传到自定义服务器
+ * │   ├─ _fetchFromCustom(password) // 从自定义服务器下载
+ * │   ├─ _uploadToGist()      // 上传到GitHub Gist（自动创建/更新）
+ * │   ├─ _fetchFromGist(token) // 从Gist下载
+ * │   └─ _safeRestore(data)   // 安全恢复逻辑（解密Token、保留同步设置）
+ * 
+ * ├─ 6. UI RENDERER (界面渲染与DOM操作)
+ * │   ├─ init()               // 初始化主题、联系人列表、云同步
+ * │   ├─ applyAppearance()    // 应用壁纸与深色模式
+ * │   ├─ toggleTheme(newTheme) // 切换深色/浅色主题并保存
+ * │   ├─ switchView(viewName) // 切换联系人列表 ↔ 聊天窗口
+ * │   ├─ renderContacts()     // 渲染左侧联系人列表（含预览、红点）
+ * │   ├─ renderBookSelect()   // 渲染世界书下拉选择框
+ * │   ├─ renderWorldInfoList() // 渲染当前世界书条目列表
+ * │   ├─ initWorldInfoTab()   // 初始化世界书管理面板
+ * │   ├─ renderChatHistory(contact, isLoadMore) // 渲染聊天记录（支持分页加载更多）
+ * │   ├─ createSingleBubble(...) // 创建单个消息气泡（支持动画控制）
+ * │   ├─ appendMessageBubble(...) // 追加单个气泡到现有消息组（瀑布流式）
+ * │   ├─ playWaterfall(fullText, avatar, timestamp) // 逐段播放AI回复（瀑布动画）
+ * │   ├─ setLoading(isLoading, contactId) // 设置“正在输入…”状态（防切屏残留）
+ * │   ├─ updateRerollState(contact) // 更新“重新生成”按钮可用性
+ * │   ├─ showEditModal(oldText, onConfirm) // 显示消息编辑弹窗
+ * │   ├─ removeLatestAiBubbles() // 删除最后一条AI消息组（用于重生成）
+ * │   ├─ scrollToBottom()     // 滚动到底部
+ * │   ├─ initStatusBar()      // 初始化顶部状态栏（时间、电量）
+ * │   └─ renderPresetMenu()   // 渲染API预设下拉菜单
+ * 
+ * ├─ 7. APP CONTROLLER (核心业务逻辑控制器)
+ * │   ├─ init()               // 应用启动入口（加载数据 → 初始化UI → 绑定事件）
+ * │   ├─ enterChat(id)        // 进入指定角色聊天窗口
+ * │   ├─ handleSend(isReroll) // 主发送逻辑（含重生成、WorldInfo注入、错误处理、切屏保护）
+ * │   ├─ openSettings()       // 打开主设置弹窗并填充当前值
+ * │   ├─ saveSettingsFromUI() // 从设置界面保存配置
+ * │   ├─ switchWorldInfoBook(bookId) // 切换当前世界书
+ * │   ├─ bindCurrentBookToChar(charId) // 绑定当前世界书到指定角色（或全局）
+ * │   ├─ loadWorldInfoEntry(uid) // 加载条目到编辑区
+ * │   ├─ saveWorldInfoEntry() // 保存当前编辑的世界书条目（含名称处理）
+ * │   ├─ deleteWorldInfoEntry() // 删除当前条目
+ * │   ├─ clearWorldInfoEditor() // 清空世界书编辑区
+ * │   ├─ createNewBook()      // 新建世界书
+ * │   ├─ renameCurrentBook()  // 重命名当前世界书
+ * │   ├─ deleteCurrentBook()  // 删除当前世界书
+ * │   ├─ exportCurrentBook()  // 导出当前世界书为ST格式
+ * │   ├─ handleImportWorldInfo(file) // 导入ST世界书
+ * │   ├─ handleSavePreset()   // 保存API预设
+ * │   ├─ handleLoadPreset(index) // 加载API预设
+ * │   ├─ handleDeletePreset() // 删除API预设
+ * │   ├─ handleMessageAction(action) // 处理消息长按菜单（编辑/删除/复制）
+ * │   ├─ showMessageContextMenu(msgIndex, rect) // 显示消息上下文菜单（含防误触锁）
+ * │   ├─ hideMessageContextMenu() // 隐藏消息上下文菜单
+ * │   ├─ openEditModal(id)    // 打开角色编辑/新建弹窗
+ * │   ├─ saveContactFromModal() // 保存角色信息
+ * │   ├─ fetchModelsForUI()   // UI中拉取模型列表
+ * │   ├─ bindImageUpload(...) // 绑定图片上传并预览
+ * │   ├─ readFile(file)       // 读取文件为base64
+ * │   └─ bindEvents()         // 集中绑定所有DOM事件（发送、设置、世界书、长按等）
+ * 
+ * └─ 8. UTILS & EXPORTS (工具函数与全局导出)
+ *     ├─ formatTimestamp()    // 格式化当前时间为 [Dec.18 14:30] 样式
+ *     ├─ window.exportData()  // 全局导出备份函数（供按钮调用）
+ *     └─ window.importData(input) // 全局导入备份函数（含空间检查与错误处理）
+ * 
+ * 启动入口：window.onload = () => App.init();
  */
-
 
 
 
@@ -1341,7 +1329,17 @@ const UI = {
         const avatarText = clone.querySelector('.avatar-text');
 
         wrapper.classList.add(sender);
-        bubble.innerText = text;
+        // ★★★ 修改开始 ★★★
+        if (sender === 'ai' || sender === 'assistant') {
+            // AI 消息：启用 Markdown 解析
+            // 此时 text 已经是切分好的一小段了
+            bubble.innerHTML = parseCustomMarkdown(text);
+        } else {
+            // User 消息：通常保持纯文本（或者你也想渲染MD，就也调用 parseCustomMarkdown）
+            bubble.innerText = text; 
+        }
+        // ★★★ 修改结束 ★★★
+
         
         // ★★★ 修改：控制动画 ★★★
         // 只有新消息才加动画类，历史消息不加
@@ -1477,6 +1475,12 @@ const UI = {
                 cleanText = cleanText.replace(/^\[[A-Z][a-z]{2}\.\d{1,2}\s\d{2}:\d{2}\]\s/, '');
             }
 
+            // ★★★ 修改：同样预处理 > 符号 ★★★
+            // 这样历史记录里的 > 也会被切分成独立气泡
+            if (sender === 'ai') {
+                 cleanText = cleanText.replace(/(^|\n)>\s*/g, '\n\n');
+            }
+
             const msgTime = typeof msg === 'string' ? null : msg.timestamp;
             const paragraphs = cleanText.split(/\n\s*\n/).filter(p => p.trim());
             if (paragraphs.length === 0 && !cleanText.trim()) continue;
@@ -1579,22 +1583,22 @@ const UI = {
         this.els.rerollBtn.disabled = !hasHistory;
     },
 
+
+    // 在 UI 对象中添加
     async playWaterfall(fullText, avatar, timestamp) {
-        const paragraphs = fullText.split(/\n\s*\n/).filter(p => p.trim());
+        // ★★★ 修改：预处理 > 符号 ★★★
+        // 逻辑：把“行首的 >”替换为“双换行”，这样 split 时它就会变成独立段落
+        // replace(/(^|\n)>\s*/g, '\n\n') 意思是在开头或换行后的 >
+        const processedText = fullText.replace(/(^|\n)>\s*/g, '\n\n');
+
+        // 使用处理后的文本进行切分
+        const paragraphs = processedText.split(/\n\s*\n/).filter(p => p.trim());
+        
         for (let i = 0; i < paragraphs.length; i++) {
             if (i > 0) await new Promise(r => setTimeout(r, 400));
             this.appendMessageBubble(paragraphs[i], 'ai', avatar, timestamp);
         }
     },
-
-    // 在 UI 对象中添加
-    async playWaterfall(fullText, avatar, timestamp) {
-        const paragraphs = fullText.split(/\n\s*\n/).filter(p => p.trim());
-        for (let i = 0; i < paragraphs.length; i++) {
-            if (i > 0) await new Promise(r => setTimeout(r, 400));
-            this.appendMessageBubble(paragraphs[i], 'ai', avatar, timestamp);
-        }
-    }, // <--- 注意这里要有逗号
 
     // ================顶栏状态栏-------------------
     initStatusBar() { 
@@ -2232,21 +2236,24 @@ handleMessageAction(action) {
             }
         }
         else if (action === 'copy') {
-            // ★★★ 修复点：复制前先清洗时间戳 ★★★
+            // ★★★ 修改：复制逻辑 ★★★
             let contentToCopy = msgData.content;
             
-            // 使用同样的正则去除时间戳
+            // 1. 先去除时间戳 (保留纯内容)
             if (timestampRegex.test(contentToCopy)) {
                 contentToCopy = contentToCopy.replace(timestampRegex, '');
             }
 
+            // 2. 清洗 Markdown 符号 (调用我们在 Utils 里写的新函数)
+            // 这样剪贴板里就是纯纯的文本了，保留了换行，但没有 * # >
+            contentToCopy = cleanMarkdownForCopy(contentToCopy);
+
             navigator.clipboard.writeText(contentToCopy)
                 .then(() => {
-                    alert("已复制内容"); 
+                    alert("已复制纯文本"); 
                 })
                 .catch(err => {
                     console.error("复制失败:", err);
-                    alert("复制失败，请重试");
                 });
         }
     },
@@ -2797,5 +2804,69 @@ window.importData = (input) => {
     };
     reader.readAsText(input.files[0]);
 };
+
+
+// ==============mrakdown=================
+
+/**
+ * 1. 简易 Markdown 解析器 (用于气泡渲染)
+ * 注意：必须先进行 HTML 转义防止 XSS，然后再替换 Markdown 语法
+ */
+function parseCustomMarkdown(text) {
+    if (!text) return '';
+
+    // 1. XSS 防御：先把原有的 < > & 替换掉，防止用户输入恶意代码
+    let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    // 2. 处理引用 > (你的需求：直接删除 > 并视为双换行，以便后续切分)
+    // 注意：这一步最好在切分气泡前做，但如果在气泡内渲染，我们可以把它变为空行或分割线
+    // 如果你的切分逻辑是在渲染前做的，这里只处理残留的 visual 效果
+    html = html.replace(/^>\s*/gm, '\n\n'); 
+
+    // 3. 处理标题 ### (你的需求：加粗，字号不变)
+    // 匹配 1-6 个 # 开头的行，将其内容包裹在 <b> 标签中
+    html = html.replace(/^#+\s+(.*)$/gm, '<b>$1</b>');
+
+    // 4. 处理加粗 ***bold*** 或 **bold**
+    html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<b>$1</b>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+
+    // 5. 处理斜体 *italic*
+    html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+
+    // 6. 处理圆点列表 * list (你的需求：- 不管，只处理 *)
+    // 将行首的 "* " 替换为 "• " (实心圆点字符) 或者 HTML <ul> 结构
+    // 为了保持气泡简单，直接用字符替换最稳妥
+    html = html.replace(/^\*\s+/gm, '• ');
+
+    // 7. 处理换行 (保留显示换行)
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+}
+
+/**
+ * 2. 纯文本清洗器 (用于复制)
+ * 你的需求：保留换行，去除所有 Markdown 符号 (*, #, >)
+ */
+function cleanMarkdownForCopy(text) {
+    if (!text) return '';
+    let clean = text;
+    clean = clean.replace(/^>\s*/gm, '');  // 去引用
+    clean = clean.replace(/^#+\s+/gm, ''); // 去标题
+    
+    // 👇 优化这一块：先去列表头的 "* "，再去剩下的 "*"
+    clean = clean.replace(/^\*\s+/gm, ''); // 先删列表头的 * 和空格
+    clean = clean.replace(/\*/g, '');      // 再删加粗/斜体的 *
+    
+    return clean;
+}
+
+
 // 启动应用
 window.onload = () => App.init();
