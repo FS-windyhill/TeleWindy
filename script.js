@@ -1003,7 +1003,7 @@ const CloudSync = {
                     this.els.gistIdInput.value = json.id;
                     localStorage.setItem(CONFIG.GIST_ID_KEY, json.id);
                 }
-                this.showStatus('GitHub 同步成功！');
+                this.showStatus('GitHub 同步成功！'+ new Date().toLocaleTimeString());
             } else throw new Error('Gist 请求失败');
         } catch (e) {
             this.showStatus(e.message, true);
