@@ -849,7 +849,7 @@ const CloudSync = {
             const gists = await res.json();
             
             // 3. 匹配描述 (这是识别是不是 TeleWindy 备份的关键)
-            const backup = gists.find(g => g.description === "TeleWindy 聊天记录与配置自动备份");
+            const backup = gists.find(g => g.description === "TeleWindy Backup");
 
             if (backup) {
                 // 4. 找到了！填入 ID 并保存
