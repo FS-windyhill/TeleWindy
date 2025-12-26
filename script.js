@@ -1115,41 +1115,43 @@ const UI = {
         this.applyAppearance();
     },
 
+
+    // 切换窗口
     switchView(viewName) {
-        // 获取最外层容器（用来控制滑动的类）
         const appContainer = document.getElementById('app-container');
 
         if (viewName === 'chat') {
             // ===========================
             // 进入聊天页面
             // ===========================
-            
-            // 旧代码（注释掉或删除）：
-            // this.els.viewList.classList.add('hidden');
-            // this.els.viewChat.classList.remove('hidden');
 
-            // 新代码：给容器加类，触发 CSS 的 transform 滑动动画
-            appContainer.classList.add('in-chat-mode');
+            // 1. 先触发动画（让用户先看到界面在变）
+            // 这里使用 requestAnimationFrame 确保动画类加上去时，浏览器已经准备好下一帧
+            requestAnimationFrame(() => {
+                appContainer.classList.add('in-chat-mode');
+            });
+
+            // 2. 稍微延迟一点点再滚到底部或做繁重的渲染
+            // 让动画先跑起来，哪怕跑了 50ms 再卡顿，用户也会感觉"动了"
+            // 如果你的 renderMessages() 是在 switchView 之前调用的，请尝试把它移到这里
+            // 或者保留现状，但确保 render 之后给个小延时再加 class
             
         } else {
             // ===========================
             // 返回联系人列表
             // ===========================
-
-            // 旧代码（注释掉或删除）：
-            // this.els.viewChat.classList.add('hidden');
-            // this.els.viewList.classList.remove('hidden');
-
-            // 新代码：移除类，CSS 会自动把页面滑回去
+            
+            // 撤销类名，淡出回去
             appContainer.classList.remove('in-chat-mode');
 
-            // === 下面这些业务逻辑保持不变 ===
+            // 业务逻辑
             STATE.currentContactId = null;
             
-            // 这里建议加一个小延时，等动画结束再刷新列表（可选，不加也可以）
-            // 如果列表图片很多，立即刷新可能会导致滑回去时稍微卡顿，
-            // 但立即刷新能保证滑回去看到的是最新的预览。建议保留原样：
-            this.renderContacts(); 
+            // 延迟刷新列表，避免返回时的动画卡顿
+            // 等待 300ms (CSS transition 时间) 后再刷新 DOM
+            setTimeout(() => {
+                this.renderContacts(); 
+            }, 200);
         }
     },
 

@@ -319,25 +319,6 @@ body {
 
 }
 
-/* 2. 页面通用设置：绝对定位，重叠在一起 */
-.page-view {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto; /* 页面内部滚动 */
-
-
-    /* 核心动画属性：贝塞尔曲线让动画更顺滑 */
-    transition: transform 0.35s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.35s;
-    
-    /* 硬件加速 */
-    will-change: transform;
-}
-
-
-
 
 
 /* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
@@ -416,14 +397,28 @@ body {
     flex-direction: column;
     height: 100%;
     width: 100%;
+    
 }
 
-/* 通讯录页面：稍微向左移动并变暗 (视差效果) */
-#app-container.in-chat-mode #view-contact-list {
-    transform: translateX(-30%); /* 移动距离不用太大，形成视差 */
-    opacity: 0; /* 稍微变暗 */
-    pointer-events: none; /* 防止动画过程中误触 */
+
+
+
+/* 2. 页面通用设置：绝对定位，重叠在一起 */
+.page-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent; /* 透出 Body 的壁纸 */
+
+    /* 关键：只在这个属性上做动画 */
+    transition: opacity 0.2s ease-in-out;
+    
+    /* 默认所有页面都不响应点击，下面会单独开启 */
+    pointer-events: none; 
 }
+
 
 /* 聊天页面：从右侧进入中间 */
 #app-container.in-chat-mode #view-chat {
@@ -432,9 +427,30 @@ body {
 
 /* 聊天页面：默认在右侧屏幕外 */
 #view-chat {
-    z-index: 20; /* 聊天页层级更高，盖在上面 */
     transform: translateX(100%);
     box-shadow: -5px 0 15px rgba(0,0,0,0.1); /* 给聊天页左边加个阴影，更有层次感 */
+    opacity: 0;
+    z-index: 5;
+}
+
+/* ---------------------------------- */
+/* 2. 聊天状态 (.in-chat-mode)        */
+/* ---------------------------------- */
+
+
+
+/* 通讯录：变透明 */
+.in-chat-mode #view-contact-list {
+    opacity: 0;
+    /* 加上这个防止这里还在动画时遮挡了聊天的点击 */
+    pointer-events: none; 
+}
+
+/* 聊天窗口：变实、浮上来、可点击 */
+.in-chat-mode #view-chat {
+    opacity: 1;
+    z-index: 20; /* 确保盖在通讯录上面 */
+    pointer-events: auto;
 }
 
 
@@ -545,6 +561,9 @@ body {
     background: transparent;    /* 背景是壁纸，所以透明 */
     z-index: 10;
     transform: translateX(0);
+
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* 核心：悬浮的毛玻璃大卡片（固定 85% 大小，自动居中） */
