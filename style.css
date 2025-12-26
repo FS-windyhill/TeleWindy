@@ -310,13 +310,35 @@ body {
     to   { opacity: 1; }
 }
 
-/* ======== 2. app-container 现在就是真正的 flex 爸爸 ======== */
+/* ======== 2. app-container 现在就是真正的 flex 爸爸  动效 页面切换 ======== */
 #app-container {
-    display: flex;
-    flex-direction: column;
-    flex: 1;                     /* 占满 body 所有剩余空间 */
-    min-height: 0;               /* 关键！允许 chat-window 里的 overflow-y 正常滚动 */
+    position: relative;
+    width: 100%;
+    height: 100vh; /* 确保占满屏幕 */
+    overflow: hidden; /* 隐藏超出屏幕的页面 */
+    background: url('wallpaper.jpg') center/cover no-repeat fixed;
 }
+
+/* 2. 页面通用设置：绝对定位，重叠在一起 */
+.page-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* 页面内部滚动 */
+    background: url('wallpaper.jpg') center/cover no-repeat fixed;
+
+    /* 核心动画属性：贝塞尔曲线让动画更顺滑 */
+    transition: transform 0.35s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.35s;
+    
+    /* 硬件加速 */
+    will-change: transform;
+}
+
+
+
+
 
 /* ======== 3. 三个孩子的高度行为（原来就写对了，保留）======== */
 #chat-window {
@@ -389,13 +411,33 @@ body {
 /* ============================================== */
 
 /* 1. 视图切换容器 */
-#view-contact-list, #view-chat {
+#view-chat {
     display: flex;
     flex-direction: column;
     height: 100%;
     width: 100%;
 }
-.hidden { display: none !important; }
+
+/* 通讯录页面：稍微向左移动并变暗 (视差效果) */
+#app-container.in-chat-mode #view-contact-list {
+    transform: translateX(-30%); /* 移动距离不用太大，形成视差 */
+    opacity: 0.8; /* 稍微变暗 */
+    pointer-events: none; /* 防止动画过程中误触 */
+}
+
+/* 聊天页面：从右侧进入中间 */
+#app-container.in-chat-mode #view-chat {
+    transform: translateX(0);
+}
+
+/* 聊天页面：默认在右侧屏幕外 */
+#view-chat {
+    z-index: 20; /* 聊天页层级更高，盖在上面 */
+    transform: translateX(100%);
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1); /* 给聊天页左边加个阴影，更有层次感 */
+}
+
+
 
 /* 2. Header 里的新按钮 (统一样式) */
 .header-icon-btn {
@@ -501,6 +543,8 @@ body {
     display: flex;
     flex-direction: column;
     background: transparent;    /* 背景是壁纸，所以透明 */
+    z-index: 10;
+    transform: translateX(0);
 }
 
 /* 核心：悬浮的毛玻璃大卡片（固定 85% 大小，自动居中） */

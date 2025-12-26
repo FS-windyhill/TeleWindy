@@ -684,48 +684,26 @@ const API = {
 
             
         // ==========================================
-        //  核心修改在这里：同时保留 Console 和 UI 日志
+        // 1. 发送前日志记录 (修复版)
         // ==========================================
-        
-
         try {
-            // 我们“尝试”执行这些可能会出错的代码
-            let requestBodyObject = options.body; // 默认它就是个对象
-
-            // ★ 关键检查：如果它是个字符串，我们才需要 parse
+            let requestBodyObject = options.body;
             if (typeof options.body === 'string') {
                 requestBodyObject = JSON.parse(options.body);
             }
             
-            // 1.【你的功能】：F12 控制台打印
-            // 现在我们打印的是确认过的、绝对是对象的 requestBodyObject
             console.log(`[${provider}] Sending...`, requestBodyObject);
 
-            // 2.【新增功能】：格式化并保存到全局变量
-            const jsonStr = JSON.stringify(requestBodyObject, null, 2);
+            // 直接存入全局变量
             window.LAST_API_LOG = {
-                content: jsonStr,
-                tokens: this.estimateTokens(jsonStr)
+                content: JSON.stringify(requestBodyObject, null, 2),
+                tokens: 0, 
+                isEstimated: true 
             };
 
         } catch (error) {
-            // 如果 try 代码块里任何一行出错了，程序会跳到这里，而不会崩溃！
-            
-            // ★ 在F12里打印一个更明确的错误信息，帮助我们调试
             console.error("【API日志记录失败】", error);
-            
-            // ★ 同时，把当时出问题的原始数据也打印出来，看看它到底长啥样
-            console.log("【出问题的原始 options.body】:", options.body);
-
-            // （可选）即使出错了，也可以给一个默认值，防止其他地方用到 window.LAST_API_LOG 时出错
-            window.LAST_API_LOG = {
-                content: '记录API日志时发生错误，请查看控制台详情。',
-                tokens: 0
-            };
         }
-
-        // ==========================================
-
 
         const response = await fetch(fetchUrl, options);
         if (!response.ok) {
@@ -734,6 +712,28 @@ const API = {
         }
         
         const data = await response.json();
+
+        // ==========================================
+        // 2. 发送后：拿到真实 Token (修复版)
+        // ==========================================
+        console.log(`[${provider}] Raw Response:`, data);
+
+        if (data.usage && data.usage.prompt_tokens) {
+            // 完美情况：API 返回了 token
+            if (window.LAST_API_LOG) {
+                window.LAST_API_LOG.tokens = data.usage.prompt_tokens;
+                window.LAST_API_LOG.isEstimated = false;
+            }
+            console.log(`API返回真实Token消耗: ${data.usage.prompt_tokens}`);
+        } else {
+            // 保底情况：API 没返回，我们自己算
+            // ★ 修改点：这里不要用 jsonStr，直接用 window.LAST_API_LOG.content
+            if (window.LAST_API_LOG && window.LAST_API_LOG.content) {
+                window.LAST_API_LOG.tokens = this.estimateTokens(window.LAST_API_LOG.content);
+            }
+        }
+        
+
         
         if (provider === 'claude') return data.content[0].text.trim();
         if (provider === 'gemini') return data.candidates[0].content.parts[0].text.trim();
@@ -1116,13 +1116,39 @@ const UI = {
     },
 
     switchView(viewName) {
+        // 获取最外层容器（用来控制滑动的类）
+        const appContainer = document.getElementById('app-container');
+
         if (viewName === 'chat') {
-            this.els.viewList.classList.add('hidden');
-            this.els.viewChat.classList.remove('hidden');
+            // ===========================
+            // 进入聊天页面
+            // ===========================
+            
+            // 旧代码（注释掉或删除）：
+            // this.els.viewList.classList.add('hidden');
+            // this.els.viewChat.classList.remove('hidden');
+
+            // 新代码：给容器加类，触发 CSS 的 transform 滑动动画
+            appContainer.classList.add('in-chat-mode');
+            
         } else {
-            this.els.viewChat.classList.add('hidden');
-            this.els.viewList.classList.remove('hidden');
+            // ===========================
+            // 返回联系人列表
+            // ===========================
+
+            // 旧代码（注释掉或删除）：
+            // this.els.viewChat.classList.add('hidden');
+            // this.els.viewList.classList.remove('hidden');
+
+            // 新代码：移除类，CSS 会自动把页面滑回去
+            appContainer.classList.remove('in-chat-mode');
+
+            // === 下面这些业务逻辑保持不变 ===
             STATE.currentContactId = null;
+            
+            // 这里建议加一个小延时，等动画结束再刷新列表（可选，不加也可以）
+            // 如果列表图片很多，立即刷新可能会导致滑回去时稍微卡顿，
+            // 但立即刷新能保证滑回去看到的是最新的预览。建议保留原样：
             this.renderContacts(); 
         }
     },
