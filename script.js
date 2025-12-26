@@ -2707,7 +2707,7 @@ const App = {
             // 从全局变量读取刚才 API 存进去的数据
             if (window.LAST_API_LOG) {
                 logContent.innerText = window.LAST_API_LOG.content;
-                logToken.innerText = `(估算 Tokens: ${window.LAST_API_LOG.tokens})`;
+                logToken.innerText = `(Tokens: ${window.LAST_API_LOG.tokens})`;
             } else {
                 logContent.innerText = "本次会话尚未发送过消息，暂无日志。";
                 logToken.innerText = "(Token: 0)";
